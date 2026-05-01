@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force_publish:
+        description: 'Publish even if release-please reports no qualifying commits (manual recovery path).'
+        type: boolean
+        default: false
+
+# Two release-please runs racing on the same branch can fight over the
+# release PR. One at a time.
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+# Defaults are minimal; each job widens what it needs. release-please
+# needs PR + contents write to open + merge the release PR; the
+# publish job needs id-token for npm provenance.
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      releases_created: ${{ steps.rp.outputs.releases_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@v4
+        with:
+          # release-please reads release-please-config.json + the
+          # manifest at the repo root by default; explicit paths kept
+          # for readability.
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish:
+    # Run when release-please cut a release on main, OR when a manual
+    # workflow_dispatch passed force_publish=true (recovery path used
+    # when release-please skipped because there were no qualifying
+    # conventional commits).
+    needs: release-please
+    if: needs.release-please.outputs.releases_created == 'true' || github.event.inputs.force_publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # sigstore provenance via OIDC
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need backend-i99dash sibling for the category-slugs drift
+          # check before we publish — same gate CI uses.
+          path: i99dash-sdk
+
+      - uses: actions/checkout@v4
+        with:
+          repository: i99dev/backend-i99dash
+          path: backend-i99dash
+          fetch-depth: 1
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: i99dash-sdk/pnpm-lock.yaml
+          # The publish step uses npm CLI directly (not pnpm) — pnpm
+          # publish doesn't speak the provenance flag yet. registry-url
+          # has to be set so npm picks up NODE_AUTH_TOKEN.
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        working-directory: i99dash-sdk
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: i99dash-sdk
+        run: pnpm typecheck
+
+      - name: Lint
+        working-directory: i99dash-sdk
+        run: pnpm lint
+
+      - name: Test
+        working-directory: i99dash-sdk
+        run: pnpm test
+
+      - name: Build
+        working-directory: i99dash-sdk
+        run: pnpm build
+
+      - name: Category-slugs drift check
+        working-directory: i99dash-sdk
+        env:
+          BACKEND_REPO_PATH: ${{ github.workspace }}/backend-i99dash
+        run: pnpm check:category-drift
+
+      - name: Verify CLI binary builds cleanly
+        working-directory: i99dash-sdk
+        run: |
+          test -x dist/cli.js
+          head -1 dist/cli.js | grep -q '^#!/usr/bin/env node'
+          node dist/cli.js --help | grep -q '^Usage: i99dash'
+
+      - name: Publish to npm
+        working-directory: i99dash-sdk
+        env:
+          # Granular access token issued for the `i99dash` package
+          # only. Stored as NPM_TOKEN in repo secrets.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+        run: npm publish --access public

@@ -6,7 +6,15 @@
   "homepage": "https://github.com/i99dash/i99dash-sdk#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/i99dash/i99dash-sdk"
+    "url": "git+https://github.com/i99dash/i99dash-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/i99dash/i99dash-sdk/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "provenance": true
   },
   "type": "module",
   "sideEffects": false,
