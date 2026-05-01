@@ -52,16 +52,25 @@ jobs:
     permissions:
       contents: read
       id-token: write # sigstore provenance via OIDC
+    # Same env-lift trick as ci.yml — `secrets.*` is blocked in
+    # step-level `if`, env vars work.
+    env:
+      BACKEND_REPO_PAT: ${{ secrets.BACKEND_REPO_PAT }}
     steps:
       - uses: actions/checkout@v4
         with:
-          # Need backend-i99dash sibling for the category-slugs drift
-          # check before we publish — same gate CI uses.
           path: i99dash-sdk
 
-      - uses: actions/checkout@v4
+      # Backend repo is private; without a PAT the drift step is
+      # skipped. Backend-side CI gates the same JSON, so missing it
+      # here is a guardrail loss, not a correctness loss.
+      - id: backend-checkout
+        if: env.BACKEND_REPO_PAT != ''
+        continue-on-error: true
+        uses: actions/checkout@v4
         with:
           repository: i99dev/backend-i99dash
+          token: ${{ secrets.BACKEND_REPO_PAT }}
           path: backend-i99dash
           fetch-depth: 1
 
@@ -100,10 +109,16 @@ jobs:
         run: pnpm build
 
       - name: Category-slugs drift check
+        if: steps.backend-checkout.outcome == 'success'
         working-directory: i99dash-sdk
         env:
           BACKEND_REPO_PATH: ${{ github.workspace }}/backend-i99dash
         run: pnpm check:category-drift
+
+      - name: Drift check skipped (no backend access)
+        if: steps.backend-checkout.outcome != 'success' || env.BACKEND_REPO_PAT == ''
+        run: |
+          echo "::warning::category-slugs drift check skipped — set BACKEND_REPO_PAT in repo secrets to gate publishes on it."
 
       - name: Verify CLI binary builds cleanly
         working-directory: i99dash-sdk

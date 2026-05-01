@@ -15,21 +15,32 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    # Lift the secret into an env var so step-level `if` conditions
+    # can read it. GitHub deliberately blocks `secrets.*` in if
+    # expressions; env vars work.
+    env:
+      BACKEND_REPO_PAT: ${{ secrets.BACKEND_REPO_PAT }}
     steps:
       - uses: actions/checkout@v4
         with:
           # Need backend-i99dash sibling for the category-slugs drift
           # check. The SDK and backend repos are co-versioned; this
-          # checks out the backend's master branch alongside the SDK
+          # checks out the backend's main branch alongside the SDK
           # under test so the script can compare the two JSON files.
           path: i99dash-sdk
 
-      - uses: actions/checkout@v4
+      # Cross-repo checkout needs a PAT with read access to the
+      # private backend-i99dash. Without it, the drift step is
+      # skipped — backend-side CI gates the same JSON, so missing it
+      # here is a guardrail loss, not a correctness loss.
+      - id: backend-checkout
+        if: env.BACKEND_REPO_PAT != ''
+        continue-on-error: true
+        uses: actions/checkout@v4
         with:
           repository: i99dev/backend-i99dash
+          token: ${{ secrets.BACKEND_REPO_PAT }}
           path: backend-i99dash
-          # Drift check needs only the JSON file. A shallow clone
-          # keeps the runner fast.
           fetch-depth: 1
 
       - uses: pnpm/action-setup@v4
@@ -67,13 +78,20 @@ jobs:
         run: pnpm test
 
       - name: Category-slugs drift check
+        # Only run when the backend checkout above actually succeeded.
+        # The drift check is a cross-repo guardrail; if we can't reach
+        # the backend (no PAT, or repo moved), we skip rather than
+        # fail the whole CI run on something the SDK alone can't fix.
+        if: steps.backend-checkout.outcome == 'success'
         working-directory: i99dash-sdk
         env:
-          # Sibling checkout above. If a future workflow change moves
-          # the backend repo path, update this env var — the script
-          # itself stays identical.
           BACKEND_REPO_PATH: ${{ github.workspace }}/backend-i99dash
         run: pnpm check:category-drift
+
+      - name: Drift check skipped (no backend access)
+        if: steps.backend-checkout.outcome != 'success' || env.BACKEND_REPO_PAT == ''
+        run: |
+          echo "::warning::category-slugs drift check skipped — set BACKEND_REPO_PAT in repo secrets (PAT with read:contents on i99dev/backend-i99dash) to enable."
 
       - name: Verify CLI binary builds cleanly
         working-directory: i99dash-sdk
