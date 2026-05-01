@@ -1,0 +1,80 @@
+{
+  "name": "i99dash",
+  "version": "1.0.0",
+  "description": "Developer SDK + CLI for i99dash mini-apps. Runtime client, admin client, and the i99dash command in one install.",
+  "license": "MIT",
+  "homepage": "https://github.com/i99dash/i99dash-sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/i99dash/i99dash-sdk"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js"
+    }
+  },
+  "bin": {
+    "i99dash": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "MIGRATING.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check:category-drift": "node scripts/check-category-drift.mjs",
+    "clean": "rimraf dist"
+  },
+  "peerDependencies": {
+    "zod": "^3.25.0"
+  },
+  "dependencies": {
+    "@i99dash/sdk-dev-server": "^0.1.0",
+    "commander": "^13.1.0",
+    "consola": "^3.4.2",
+    "image-size": "^2.0.0",
+    "open": "^10.2.0",
+    "tar": "^7.5.13",
+    "undici": "^7.25.0"
+  },
+  "optionalDependencies": {
+    "keytar": "^7.9.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.19.17",
+    "@types/tar": "^6.1.13",
+    "@typescript-eslint/eslint-plugin": "^8.59.0",
+    "@typescript-eslint/parser": "^8.59.0",
+    "eslint": "^9.39.4",
+    "prettier": "^3.8.3",
+    "rimraf": "^6.1.3",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.59.1",
+    "vitest": "^2.1.9",
+    "zod": "^3.25.76"
+  },
+  "packageManager": "pnpm@10.22.0"
+}

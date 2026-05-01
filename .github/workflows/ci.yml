@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-flight runs on the same PR when a new push lands —
+# avoids burning runners on stale commits during fast-fix cycles.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need backend-i99dash sibling for the category-slugs drift
+          # check. The SDK and backend repos are co-versioned; this
+          # checks out the backend's master branch alongside the SDK
+          # under test so the script can compare the two JSON files.
+          path: i99dash-sdk
+
+      - uses: actions/checkout@v4
+        with:
+          repository: i99dev/backend-i99dash
+          path: backend-i99dash
+          # Drift check needs only the JSON file. A shallow clone
+          # keeps the runner fast.
+          fetch-depth: 1
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: i99dash-sdk/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: i99dash-sdk
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: i99dash-sdk
+        run: pnpm typecheck
+
+      - name: Lint
+        working-directory: i99dash-sdk
+        run: pnpm lint
+
+      - name: Format check
+        working-directory: i99dash-sdk
+        run: pnpm format:check
+
+      - name: Build
+        working-directory: i99dash-sdk
+        run: pnpm build
+
+      - name: Test
+        working-directory: i99dash-sdk
+        run: pnpm test
+
+      - name: Category-slugs drift check
+        working-directory: i99dash-sdk
+        env:
+          # Sibling checkout above. If a future workflow change moves
+          # the backend repo path, update this env var — the script
+          # itself stays identical.
+          BACKEND_REPO_PATH: ${{ github.workspace }}/backend-i99dash
+        run: pnpm check:category-drift
+
+      - name: Verify CLI binary builds cleanly
+        working-directory: i99dash-sdk
+        # Smoke-test the published shape: the bin file must have a
+        # shebang and be executable. catches a regression in the
+        # tsup post-build hook before it ships.
+        run: |
+          test -x dist/cli.js
+          head -1 dist/cli.js | grep -q '^#!/usr/bin/env node'
+          # Help banner says `i99dash`, not `sdk-i99dash`.
+          node dist/cli.js --help | grep -q '^Usage: i99dash'

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.DS_Store
+*.tsbuildinfo
+.turbo/
+.vitest-cache/
+.pnpm-debug.log
+.npmrc.local
