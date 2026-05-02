@@ -2,6 +2,18 @@
 
 All notable changes to the `i99dash` package are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.0](https://github.com/i99dash/i99dash-sdk/compare/v1.4.0...v1.5.0) (2026-05-02)
+
+
+### Features
+
+* **dash-wallpaper:** mark Upload + Gradient as v0.2 placeholders ([#9](https://github.com/i99dash/i99dash-sdk/issues/9)) ([89b9567](https://github.com/i99dash/i99dash-sdk/commit/89b9567f43a626523406964777263bd459608ad1))
+
+
+### Bug Fixes
+
+* **dash-wallpaper:** restore Upload + Gradient (revert [#9](https://github.com/i99dash/i99dash-sdk/issues/9), ship 0.1.2) ([#11](https://github.com/i99dash/i99dash-sdk/issues/11)) ([115c28d](https://github.com/i99dash/i99dash-sdk/commit/115c28d67a753d1132e2b2ab18a944a5b6fea8e6))
+
 ## [1.4.0](https://github.com/i99dash/i99dash-sdk/compare/v1.3.0...v1.4.0) (2026-05-02)
 
 
