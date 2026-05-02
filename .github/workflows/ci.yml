@@ -21,7 +21,7 @@ jobs:
     env:
       BACKEND_REPO_PAT: ${{ secrets.BACKEND_REPO_PAT }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # Need backend-i99dash sibling for the category-slugs drift
           # check. The SDK and backend repos are co-versioned; this
@@ -36,7 +36,7 @@ jobs:
       - id: backend-checkout
         if: env.BACKEND_REPO_PAT != ''
         continue-on-error: true
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: i99dev/backend-i99dash
           token: ${{ secrets.BACKEND_REPO_PAT }}
