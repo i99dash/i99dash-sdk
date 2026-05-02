@@ -8,13 +8,13 @@ Phase C reference mini-app. Lists every installed launchable app on the head uni
 
 ## What it demonstrates
 
-| Family            | Op                            | Cadence             |
-| ----------------- | ----------------------------- | ------------------- |
-| `display.read`    | `display.list`                | one-shot at boot    |
-| `pkg.read`        | `pkg.list({includeSystem})`   | one-shot at boot    |
-| `pkg.launch`      | `pkg.launch({packageName,…})` | per ▶ tap           |
-| `boot.write`      | `boot.list`                   | one-shot at boot    |
-| `boot.write`      | `boot.set` / `boot.unset`     | per ★ tap           |
+| Family         | Op                            | Cadence          |
+| -------------- | ----------------------------- | ---------------- |
+| `display.read` | `display.list`                | one-shot at boot |
+| `pkg.read`     | `pkg.list({includeSystem})`   | one-shot at boot |
+| `pkg.launch`   | `pkg.launch({packageName,…})` | per ▶ tap        |
+| `boot.write`   | `boot.list`                   | one-shot at boot |
+| `boot.write`   | `boot.set` / `boot.unset`     | per ★ tap        |
 
 Permissions declared in `manifest.json`:
 
