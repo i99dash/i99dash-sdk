@@ -2,6 +2,13 @@
 
 All notable changes to the `i99dash` package are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.9.0](https://github.com/i99dash/i99dash-sdk/compare/v1.8.0...v1.9.0) (2026-05-05)
+
+
+### Features
+
+* profile-key v2 schemas matching backend 1.13.0-b ([#29](https://github.com/i99dash/i99dash-sdk/issues/29)) ([2206ae7](https://github.com/i99dash/i99dash-sdk/commit/2206ae7c03dbe283901a8412425d507f6dd1e21c))
+
 ## [1.8.0](https://github.com/i99dash/i99dash-sdk/compare/v1.7.0...v1.8.0) (2026-05-05)
 
 
