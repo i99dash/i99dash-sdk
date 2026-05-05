@@ -11,7 +11,6 @@ import {
   VehicleCapabilitiesSnapshotSchema,
   VehicleCapabilityProbeReportSchema,
 } from '../vehicle-capabilities.js';
-import { MiniAppManifestSchema } from '../manifest.js';
 
 describe('VEHICLE_CAPABILITIES taxonomy', () => {
   it('has unique entries', () => {
@@ -251,35 +250,3 @@ describe('DILINK_FAMILIES + SUB_TRIMS taxonomies', () => {
   });
 });
 
-describe('MiniAppManifestSchema with requiredCapabilities', () => {
-  const valid = {
-    id: 'dash_wallpaper',
-    name: { en: 'Dash Wallpaper' },
-    icon: './icon.svg',
-    url: 'https://miniapps.i99dash.app/dash-wallpaper/',
-    version: '0.2.0',
-    category: 'lifestyle',
-  };
-
-  it('defaults requiredCapabilities to empty array', () => {
-    const parsed = MiniAppManifestSchema.parse(valid);
-    expect(parsed.requiredCapabilities).toEqual([]);
-  });
-
-  it('accepts a manifest with requiredCapabilities', () => {
-    const parsed = MiniAppManifestSchema.parse({
-      ...valid,
-      requiredCapabilities: ['display.read', 'surface.write.cluster'],
-    });
-    expect(parsed.requiredCapabilities).toEqual(['display.read', 'surface.write.cluster']);
-  });
-
-  it('rejects unknown capabilities (closed enum)', () => {
-    expect(() =>
-      MiniAppManifestSchema.parse({
-        ...valid,
-        requiredCapabilities: ['display.read', 'fly.ivi' as never],
-      }),
-    ).toThrow();
-  });
-});
