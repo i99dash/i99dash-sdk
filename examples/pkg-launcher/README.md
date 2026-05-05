@@ -38,6 +38,9 @@ Permissions declared in `manifest.json`:
   "display.read", "pkg.read",
   "pkg.launch", "pkg.launch.cluster",
   "cursor.write", "gesture.dispatch"
+],
+"requiredCapabilities": [
+  "display.read", "pkg.read", "pkg.launch.ivi"
 ]
 ```
 
@@ -47,6 +50,42 @@ vehicle-control adjacent and refuses any launch the manifest didn't
 explicitly opt in to. The touchpad needs `cursor.write` for the
 drag overlay on the cluster and `gesture.dispatch` to dispatch the
 release tap.
+
+`requiredCapabilities` is the **vehicle-hardware floor** (host 1.7+).
+Only the IVI launch is mandatory — the cluster + passenger cards
+are gated client-side from `display.list().vehicle.capabilities` so
+the catalog tile stays launchable on every car. See [Adapts per
+trim](#adapts-per-trim) below for the per-trim matrix.
+
+## Adapts per trim
+
+The mini-app reads the active car's capability bits from the
+`vehicle` block of `display.list` (host 1.7+ ships `capabilities`,
+`capabilityBits`, `friendlyName`, `isFallback`) and dims cards that
+won't work on this car _before_ the user taps:
+
+| Trim                  | Head Unit |          Passenger          |     Driver (cluster)      |
+| --------------------- | :-------: | :-------------------------: | :-----------------------: |
+| **L8 / L5L**          |     ✓     | ✓ (`pkg.launch.passenger`)  |   ✓ (`…cluster.pixel`)    |
+| **L5 / L5U** (Di5.0)  |     ✓     |  ✓ (`pkg.launch.dishare`)   | dimmed — no pixel control |
+| **L7 / HAN L**        |     ✓     | ✓ (`pkg.launch.passenger`)  |  dimmed — vendor-locked   |
+| **Generic / unknown** |     ✓     | dimmed — no passenger panel |          dimmed           |
+
+Tooltip on a dimmed card names the exact missing cap (e.g.
+_Cluster pixel rendering not supported on Leopard 5 (need
+pkg.launch.cluster.pixel)_) so triage doesn't have to guess.
+
+When the host's vehicle-profile resolver fell back to a sub-trim /
+trim / DiLink-default aggregate (`isFallback === true`), the trim
+chip shows a `· best-effort` badge and enabled cards get a soft
+"capability list is an aggregate" tooltip. Cards still launch — the
+warning is informational. See the [trim × capability matrix](https://i99dash.app/docs/reference/trim-capability-matrix)
+for the full seed and the [required-capabilities recipe](https://i99dash.app/docs/recipes/required-capabilities)
+for the gating pattern.
+
+Pre-1.7 hosts that don't ship `vehicle.capabilities` fall back to
+the legacy `clusterAvailable` per-display flag — the launcher
+remains functional while the device updates.
 
 ## How to run
 
