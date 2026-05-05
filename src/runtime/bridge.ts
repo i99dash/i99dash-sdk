@@ -380,6 +380,39 @@ export class HostBridge
     this.api = api;
   }
 
+  /// Unwrap the host's `{success, data | error}` envelope. The host's
+  /// family-op handler (`_handleFamilyOp` in mini_app_viewer.dart)
+  /// wraps every reply in this envelope — same shape `_admin.exec`
+  /// uses, single decoder on the SDK side. The legacy direct-method
+  /// controllers (`MediaController.getSnapshot()` and friends) used
+  /// to receive the bare snapshot from `bridge.getMedia()`; once the
+  /// host migrated to the envelope, every legacy controller started
+  /// 422-ing with `INVALID_RESPONSE` (zod parse against the envelope
+  /// instead of the snapshot). This helper restores parity by
+  /// peeling the envelope when present, throwing the typed error
+  /// when the envelope says the call failed, and passing through
+  /// bare responses unchanged for older hosts that haven't migrated.
+  ///
+  /// Returns `unknown` because the legacy controllers parse with zod
+  /// downstream — typing the unwrap helper any tighter would force
+  /// every controller to declare its raw shape twice.
+  private _unwrapEnvelope(raw: unknown, opLabel: string): unknown {
+    if (raw == null || typeof raw !== 'object') return raw;
+    const env = raw as {
+      success?: unknown;
+      data?: unknown;
+      error?: { code?: unknown; message?: unknown };
+    };
+    if (typeof env.success !== 'boolean') return raw; // bare shape, pass through
+    if (env.success) return env.data;
+    const code = String(env.error?.code ?? 'unknown');
+    const message = String(env.error?.message ?? '');
+    throw new BridgeTransportError(
+      `${opLabel} returned error envelope: ${code}${message ? ' — ' + message : ''}`,
+      undefined,
+    );
+  }
+
   async getContext(): Promise<unknown> {
     try {
       return await this.api.callHandler('getContext');
@@ -427,8 +460,9 @@ export class HostBridge
 
   async getCarStatus(): Promise<unknown> {
     try {
-      return await this.api.callHandler('car.status.read');
+      return this._unwrapEnvelope(await this.api.callHandler('car.status.read'), 'car.status.read');
     } catch (cause) {
+      if (cause instanceof BridgeTransportError) throw cause;
       throw new BridgeTransportError('car.status.read bridge call failed', cause);
     }
   }
@@ -451,8 +485,9 @@ export class HostBridge
 
   async getMedia(): Promise<unknown> {
     try {
-      return await this.api.callHandler('media.read');
+      return this._unwrapEnvelope(await this.api.callHandler('media.read'), 'media.read');
     } catch (cause) {
+      if (cause instanceof BridgeTransportError) throw cause;
       throw new BridgeTransportError('media.read bridge call failed', cause);
     }
   }
@@ -467,8 +502,9 @@ export class HostBridge
 
   async getClimate(): Promise<unknown> {
     try {
-      return await this.api.callHandler('climate.read');
+      return this._unwrapEnvelope(await this.api.callHandler('climate.read'), 'climate.read');
     } catch (cause) {
+      if (cause instanceof BridgeTransportError) throw cause;
       throw new BridgeTransportError('climate.read bridge call failed', cause);
     }
   }
@@ -483,8 +519,12 @@ export class HostBridge
 
   async getVehicleDiagnostics(): Promise<unknown> {
     try {
-      return await this.api.callHandler('vehicle.diagnostics.read');
+      return this._unwrapEnvelope(
+        await this.api.callHandler('vehicle.diagnostics.read'),
+        'vehicle.diagnostics.read',
+      );
     } catch (cause) {
+      if (cause instanceof BridgeTransportError) throw cause;
       throw new BridgeTransportError('vehicle.diagnostics.read bridge call failed', cause);
     }
   }
@@ -499,8 +539,12 @@ export class HostBridge
 
   async getVehicleEnvironment(): Promise<unknown> {
     try {
-      return await this.api.callHandler('vehicle.environment.read');
+      return this._unwrapEnvelope(
+        await this.api.callHandler('vehicle.environment.read'),
+        'vehicle.environment.read',
+      );
     } catch (cause) {
+      if (cause instanceof BridgeTransportError) throw cause;
       throw new BridgeTransportError('vehicle.environment.read bridge call failed', cause);
     }
   }
@@ -515,8 +559,9 @@ export class HostBridge
 
   async getSystem(): Promise<unknown> {
     try {
-      return await this.api.callHandler('system.read');
+      return this._unwrapEnvelope(await this.api.callHandler('system.read'), 'system.read');
     } catch (cause) {
+      if (cause instanceof BridgeTransportError) throw cause;
       throw new BridgeTransportError('system.read bridge call failed', cause);
     }
   }
@@ -531,8 +576,12 @@ export class HostBridge
 
   async getConnectivity(): Promise<unknown> {
     try {
-      return await this.api.callHandler('connectivity.read');
+      return this._unwrapEnvelope(
+        await this.api.callHandler('connectivity.read'),
+        'connectivity.read',
+      );
     } catch (cause) {
+      if (cause instanceof BridgeTransportError) throw cause;
       throw new BridgeTransportError('connectivity.read bridge call failed', cause);
     }
   }
@@ -547,8 +596,9 @@ export class HostBridge
 
   async getLocation(): Promise<unknown> {
     try {
-      return await this.api.callHandler('location.read');
+      return this._unwrapEnvelope(await this.api.callHandler('location.read'), 'location.read');
     } catch (cause) {
+      if (cause instanceof BridgeTransportError) throw cause;
       throw new BridgeTransportError('location.read bridge call failed', cause);
     }
   }
@@ -563,8 +613,9 @@ export class HostBridge
 
   async getNavigation(): Promise<unknown> {
     try {
-      return await this.api.callHandler('nav.read');
+      return this._unwrapEnvelope(await this.api.callHandler('nav.read'), 'nav.read');
     } catch (cause) {
+      if (cause instanceof BridgeTransportError) throw cause;
       throw new BridgeTransportError('nav.read bridge call failed', cause);
     }
   }
