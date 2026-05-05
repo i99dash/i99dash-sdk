@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import slugsJson from './category-slugs.json' with { type: 'json' };
+import { VEHICLE_CAPABILITIES, type VehicleCapability } from './vehicle-capabilities.js';
 
 /// Two-letter locale code (`ar`, `en`, ...) → display string.
 /// At least one entry is required so the host can always render a name.
@@ -151,6 +152,22 @@ export const MiniAppManifestSchema = z.object({
         'vehicle.environment',
       ]),
     )
+    .default([]),
+
+  /// Vehicle / hardware capabilities the bundle needs to function. The
+  /// host's catalog merge dims rows where the active car doesn't
+  /// expose every entry here (subset check). Distinct from
+  /// `permissions` (host family gating) and `requiredPermissions`
+  /// (publisher-grant gating); see `vehicle-capabilities.ts` for the
+  /// three-way split.
+  ///
+  /// Closed enum — additions require a coordinated SDK + host +
+  /// backend bump (CI drift check enforces it). Empty default keeps
+  /// existing manifests valid: a row that declares nothing here is
+  /// treated as "runs anywhere" and only filtered by the `permissions`
+  /// / `requiredPermissions` gates.
+  requiredCapabilities: z
+    .array(z.enum(VEHICLE_CAPABILITIES as unknown as [VehicleCapability, ...VehicleCapability[]]))
     .default([]),
 });
 

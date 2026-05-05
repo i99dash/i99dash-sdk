@@ -33,6 +33,19 @@ export {
 export { HostCapabilitiesSchema, type HostCapabilities } from './capabilities.js';
 
 export {
+  VEHICLE_CAPABILITIES,
+  type VehicleCapability,
+  CAPABILITY_BITS,
+  bitsFromCapabilities,
+  capabilitiesFromBits,
+  hasAllCapabilities,
+  VehicleCapabilitiesSnapshotSchema,
+  type VehicleCapabilitiesSnapshot,
+  VehicleCapabilityProbeReportSchema,
+  type VehicleCapabilityProbeReport,
+} from './vehicle-capabilities.js';
+
+export {
   MediaSnapshotSchema,
   type MediaSnapshot,
   MediaSourceSchema,
