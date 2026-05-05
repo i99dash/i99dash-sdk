@@ -2,6 +2,17 @@
 
 All notable changes to the `i99dash` package are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.0.0](https://github.com/i99dash/i99dash-sdk/compare/v2.1.0...v3.0.0) (2026-05-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* ``MiniAppManifestSchema`` no longer accepts ``requiredPermissions`` or ``requiredCapabilities``; both fields are silently stripped at parse time. CLI commands ``i99dash login`` and ``i99dash perms`` (and the underlying ``api/endpoints`` + ``auth/cert`` modules) are gone with the backend's admin_perms removal. Apps relying on install-time gating should migrate to runtime feature probing via ``client.has(...)`` — see ``MIGRATING.md``.
+
+### Features
+
+* drop manifest perm/cap fields + perms/login CLI commands ([#41](https://github.com/i99dash/i99dash-sdk/issues/41)) ([e03c185](https://github.com/i99dash/i99dash-sdk/commit/e03c1859d0bc2e16422cf2b75cdde8967d3b7390))
+
 ## [2.1.0](https://github.com/i99dash/i99dash-sdk/compare/v2.0.0...v2.1.0) (2026-05-05)
 
 
