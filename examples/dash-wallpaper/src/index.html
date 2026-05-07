@@ -632,23 +632,27 @@
 
         // ── Display picker ──────────────────────────────────
         function displayLabel(d) {
-          // Prefer the host-supplied overrideLabel ("Driver" on L8 /
-          // L5L per VehicleProfile) so the chip matches what the
-          // rest of i99dash calls this display.
-          if (d.overrideLabel) return { name: d.overrideLabel, meta: d.width + '×' + d.height };
-          if (d.isDefault) return { name: 'Head Unit', meta: d.width + '×' + d.height };
+          // 0.4.4: prepend the displayId in [brackets] so on-car
+          // testers can identify which physical screen each chip
+          // maps to. The friendly name (overrideLabel / Head Unit /
+          // Passenger / Cluster) follows.
+          var idTag = '[' + d.id + '] ';
+          if (d.overrideLabel)
+            return { name: idTag + d.overrideLabel, meta: d.width + '×' + d.height };
+          if (d.isDefault) return { name: idTag + 'Head Unit', meta: d.width + '×' + d.height };
           if (d.name && d.name.toLowerCase() === 'fse')
-            return { name: 'Passenger', meta: d.width + '×' + d.height };
+            return { name: idTag + 'Passenger', meta: d.width + '×' + d.height };
           if (d.isCluster) {
-            // Per BYD's secondary-overlay pattern (`..._1` is the
-            // friendly slot — see SDK multi-display guide).
             var secondary = /XDJAScreenProjection_1$/i.test(d.name);
             return {
-              name: 'Cluster',
+              name: idTag + 'Cluster',
               meta: secondary ? 'overlay' : d.width + '×' + d.height,
             };
           }
-          return { name: d.name || 'Display ' + d.id, meta: d.width + '×' + d.height };
+          return {
+            name: idTag + (d.name || 'Display ' + d.id),
+            meta: d.width + '×' + d.height,
+          };
         }
 
         function renderTrimPill(vehicle) {
@@ -688,12 +692,12 @@
             });
           }
           renderTrimPill(vehicle);
-          // Filter out shadow / duplicate displays the active
-          // VehicleProfile flags (e.g. display 3 on L8 mirrors 5).
-          // Older hosts (no `hidden` field) leave every entry through.
-          var visible = all.filter(function (d) {
-            return !d.hidden;
-          });
+          // 0.4.4: testing mode — show ALL displays including the
+          // ones the active VehicleProfile flags as `hidden` (e.g.
+          // display 3 on L8 mirrors 5). On-car testers can verify
+          // which numeric displays actually deliver pixels per trim.
+          // The chip shows [id] prefix so each one is identifiable.
+          var visible = all;
           // Whether the cluster is physically reachable on this trim.
           // False on Leopard 5 / 5 Ultra / 7 / HAN L. We still render
           // the cluster chip but disable it + tooltip "why" so users
@@ -718,15 +722,26 @@
           host.innerHTML = '';
           ordered.forEach(function (d) {
             var lbl = displayLabel(d);
+            // 0.4.4: testing mode — every chip is clickable.
+            // We still write the historical disable hints into the
+            // tooltip (cluster-unavailable, head-unit-self) so the
+            // tester knows the existing capability story, but they
+            // can still TRY the chip. The host's surface.create call
+            // will fail cleanly if the cap really isn't there;
+            // empirical truth wins over profile inference.
             var clusterUnavailable = d.isCluster && d.clusterAvailable === false && !clusterOk;
-            var disabled = d.isDefault || clusterUnavailable;
             var chip = document.createElement('div');
-            chip.className = 'chip' + (disabled ? ' disabled' : '');
+            chip.className = 'chip';
             chip.dataset.displayId = d.id;
+            var hints = [];
+            if (d.isDefault) hints.push('default IVI — surface.create may not target self');
             if (clusterUnavailable) {
-              chip.title =
-                'Cluster not supported on this trim' + (trimName ? ' (' + trimName + ')' : '');
+              hints.push(
+                'Cluster flagged unsupported' + (trimName ? ' on ' + trimName : '') + ' — try anyway',
+              );
             }
+            if (d.hidden) hints.push('flagged hidden by profile (mirror / shadow)');
+            if (hints.length) chip.title = hints.join(' · ');
             chip.innerHTML =
               '<span class="dot"></span>' +
               '<span class="name">' +
@@ -735,14 +750,12 @@
               '<span class="meta">' +
               lbl.meta +
               '</span>';
-            if (!disabled) {
-              chip.addEventListener('click', function () {
-                if (state.targets.has(d.id)) state.targets.delete(d.id);
-                else state.targets.add(d.id);
-                chip.classList.toggle('on');
-                updateUI();
-              });
-            }
+            chip.addEventListener('click', function () {
+              if (state.targets.has(d.id)) state.targets.delete(d.id);
+              else state.targets.add(d.id);
+              chip.classList.toggle('on');
+              updateUI();
+            });
             host.appendChild(chip);
           });
           updateUI();
