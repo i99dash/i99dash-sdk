@@ -1,7 +1,0 @@
-{
-  "match": { "templateId": "diag.clear_cache" },
-  "response": {
-    "success": true,
-    "data": { "bytesFreed": 524288 }
-  }
-}

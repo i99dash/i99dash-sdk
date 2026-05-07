@@ -1,7 +1,0 @@
-{
-  "match": { "templateId": "pm.enable_user" },
-  "response": {
-    "success": true,
-    "data": { "enabled": true }
-  }
-}

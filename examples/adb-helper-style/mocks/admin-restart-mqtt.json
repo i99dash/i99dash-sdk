@@ -1,7 +1,0 @@
-{
-  "match": { "templateId": "diag.restart_mqtt" },
-  "response": {
-    "success": true,
-    "data": { "reconnectedAt": "now" }
-  }
-}
