@@ -121,9 +121,7 @@ export class CarController {
 
   async read(names: string[]): Promise<CarReadResponse> {
     if (names.length > CAR_MAX_NAMES) {
-      throw new Error(
-        `signals.too_many_names: requested ${names.length}, max ${CAR_MAX_NAMES}`,
-      );
+      throw new Error(`signals.too_many_names: requested ${names.length}, max ${CAR_MAX_NAMES}`);
     }
     const raw = await this._call('car.read', { names });
     if (_isErrorEnvelope(raw)) {
@@ -328,7 +326,13 @@ export class CarController {
 
 // ── module-private helpers ─────────────────────────────────────────
 
-function _parse<T>(schema: { safeParse: (raw: unknown) => { success: true; data: T } | { success: false; error: unknown } }, raw: unknown, label: string): T {
+function _parse<T>(
+  schema: {
+    safeParse: (raw: unknown) => { success: true; data: T } | { success: false; error: unknown };
+  },
+  raw: unknown,
+  label: string,
+): T {
   const result = schema.safeParse(raw);
   if (!result.success) {
     throw new InvalidResponseError(`${label} payload did not match schema`, result.error);
@@ -336,15 +340,18 @@ function _parse<T>(schema: { safeParse: (raw: unknown) => { success: true; data:
   return result.data;
 }
 
-function _parseSafe<T>(schema: { safeParse: (raw: unknown) => { success: true; data: T } | { success: false; error: unknown } }, raw: unknown): T | null {
+function _parseSafe<T>(
+  schema: {
+    safeParse: (raw: unknown) => { success: true; data: T } | { success: false; error: unknown };
+  },
+  raw: unknown,
+): T | null {
   const result = schema.safeParse(raw);
   return result.success ? result.data : null;
 }
 
 function _isErrorEnvelope(raw: unknown): boolean {
-  return (
-    raw !== null && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)
-  );
+  return raw !== null && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>);
 }
 
 function _errString(raw: unknown): string {
@@ -388,7 +395,12 @@ function _decodeBase64(b64: string): Uint8Array {
   // Use globalThis.Buffer to avoid pulling Node types into the
   // browser bundle.
   const g = globalThis as unknown as {
-    Buffer?: { from: (s: string, enc: string) => { buffer: ArrayBuffer; byteOffset: number; byteLength: number } };
+    Buffer?: {
+      from: (
+        s: string,
+        enc: string,
+      ) => { buffer: ArrayBuffer; byteOffset: number; byteLength: number };
+    };
   };
   if (g.Buffer) {
     const buf = g.Buffer.from(b64, 'base64');

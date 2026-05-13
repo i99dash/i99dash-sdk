@@ -36,9 +36,15 @@ const validContext = {
 interface CarHostStub {
   bridge: CarBridge;
   /// Dispatch a `car.signal` event via the page-installed events bus.
-  emitSignal(subscriptionId: string, data: { name: string; value: number | null; at: string }): void;
+  emitSignal(
+    subscriptionId: string,
+    data: { name: string; value: number | null; at: string },
+  ): void;
   /// Dispatch a `car.connection` state change.
-  emitConnection(subscriptionId: string, state: 'connected' | 'degraded' | 'disconnected' | 'unknown'): void;
+  emitConnection(
+    subscriptionId: string,
+    state: 'connected' | 'degraded' | 'disconnected' | 'unknown',
+  ): void;
   /// Last subscription id minted; tests use this to target push.
   lastSignalId(): string;
   lastConnectionId(): string;
@@ -74,15 +80,15 @@ function newCarStub(): CarHostStub {
   return {
     bridge,
     emitSignal(subscriptionId, data) {
-      const events = (
-        window as unknown as Record<string, HostEventsApi | undefined>
-      )[HOST_EVENTS_GLOBAL];
+      const events = (window as unknown as Record<string, HostEventsApi | undefined>)[
+        HOST_EVENTS_GLOBAL
+      ];
       events?.dispatch('car.signal', { subscriptionId, data });
     },
     emitConnection(subscriptionId, state) {
-      const events = (
-        window as unknown as Record<string, HostEventsApi | undefined>
-      )[HOST_EVENTS_GLOBAL];
+      const events = (window as unknown as Record<string, HostEventsApi | undefined>)[
+        HOST_EVENTS_GLOBAL
+      ];
       events?.dispatch('car.connection', { subscriptionId, state });
     },
     lastSignalId: () => lastSignalId,

@@ -21,10 +21,7 @@ export const CarCatalogEntrySchema = z
     category: z.string(),
     description: z.string().optional(),
     units: z.string().optional().nullable(),
-    range: z
-      .object({ min: z.number(), max: z.number() })
-      .optional()
-      .nullable(),
+    range: z.object({ min: z.number(), max: z.number() }).optional().nullable(),
     writeable: z.boolean(),
     writeActionId: z.string().optional().nullable(),
     threeD: z.boolean(),

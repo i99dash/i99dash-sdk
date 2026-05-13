@@ -324,9 +324,7 @@ const climate = await client.climate.getSnapshot();
 console.log(climate.cabinTempC, climate.fanSpeed);
 
 // v5
-const { values } = await client.car.read([
-  'ac_cabin_temp', 'ac_fan', 'ac_power',
-]);
+const { values } = await client.car.read(['ac_cabin_temp', 'ac_fan', 'ac_power']);
 console.log(values.ac_cabin_temp, values.ac_fan);
 ```
 
@@ -351,21 +349,21 @@ Name set pulled from `byd_public_catalog.dart`. If your mini-app
 targets a non-BYD brand later, swap the names for that brand's
 catalog — the controller surface is brand-agnostic.
 
-| v4 call                                              | v5 equivalent                                                                         |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `client.climate.getSnapshot()` → `cabinTempC`        | `client.car.read(['ac_cabin_temp'])`                                                  |
-| `client.climate.getSnapshot()` → `fanSpeed`          | `client.car.read(['ac_fan'])`                                                         |
-| `client.climate.getSnapshot()` → `acPower`           | `client.car.read(['ac_power'])`                                                       |
-| `client.climate.getSnapshot()` → `targetTempC`       | `client.car.read(['ac_target_temp'])`                                                 |
-| `client.vehicleDiagnostics.getSnapshot()` → tire psi | `client.car.read(['tpms_pressure_lf', 'tpms_pressure_rf', 'tpms_pressure_lr', 'tpms_pressure_rr'])` |
-| `client.vehicleDiagnostics.getSnapshot()` → odometer | `client.car.read(['stat_total_km'])`                                                  |
-| `client.carStatus.getSnapshot()` → `speedKmh`        | `client.car.read(['speed_kmh'])`                                                      |
-| `client.carStatus.getSnapshot()` → `batteryPct`      | `client.car.read(['battery_pct'])`                                                    |
-| `client.media.getSnapshot()` → playState             | host no longer ships a media bridge; consume Android MediaSession via `_admin.exec` if needed |
-| `client.system.getSnapshot()` → ota status           | not yet in v2 catalog — file an issue if you depend on it                             |
-| `client.connectivity.getSnapshot()` → networkType    | not yet in v2 catalog                                                                 |
-| `client.location.getSnapshot()` → lat/lon            | not yet in v2 catalog (PII tier — coming in a follow-up)                              |
-| `client.navigation.getSnapshot()` → destination      | not yet in v2 catalog                                                                 |
+| v4 call                                              | v5 equivalent                                                                                                          |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `client.climate.getSnapshot()` → `cabinTempC`        | `client.car.read(['ac_cabin_temp'])`                                                                                   |
+| `client.climate.getSnapshot()` → `fanSpeed`          | `client.car.read(['ac_fan'])`                                                                                          |
+| `client.climate.getSnapshot()` → `acPower`           | `client.car.read(['ac_power'])`                                                                                        |
+| `client.climate.getSnapshot()` → `targetTempC`       | `client.car.read(['ac_target_temp'])`                                                                                  |
+| `client.vehicleDiagnostics.getSnapshot()` → tire psi | `client.car.read(['tpms_pressure_lf', 'tpms_pressure_rf', 'tpms_pressure_lr', 'tpms_pressure_rr'])`                    |
+| `client.vehicleDiagnostics.getSnapshot()` → odometer | `client.car.read(['stat_total_km'])`                                                                                   |
+| `client.carStatus.getSnapshot()` → `speedKmh`        | `client.car.read(['speed_kmh'])`                                                                                       |
+| `client.carStatus.getSnapshot()` → `batteryPct`      | `client.car.read(['battery_pct'])`                                                                                     |
+| `client.media.getSnapshot()` → playState             | host no longer ships a media bridge; consume Android MediaSession via `_admin.exec` if needed                          |
+| `client.system.getSnapshot()` → ota status           | not yet in v2 catalog — file an issue if you depend on it                                                              |
+| `client.connectivity.getSnapshot()` → networkType    | not yet in v2 catalog                                                                                                  |
+| `client.location.getSnapshot()` → lat/lon            | not yet in v2 catalog (PII tier — coming in a follow-up)                                                               |
+| `client.navigation.getSnapshot()` → destination      | not yet in v2 catalog                                                                                                  |
 | `client.car.onConnectionChange(...)`                 | `client.car.connectionSubscribe(state => ...)` — note 4 states now: `connected \| degraded \| disconnected \| unknown` |
 
 Writes (lights, doors, climate set-points) go through `car.command`:

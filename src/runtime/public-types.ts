@@ -26,8 +26,4 @@ export type {
 export type { CallOptions } from './client.js';
 export type { SDKErrorCode } from './errors.js';
 export type { Bridge, CarBridge, HostBridgeApi, WindowWithHost } from './bridge.js';
-export type {
-  CarAssetBytes,
-  CarConnectionListener,
-  CarSignalListener,
-} from './car.js';
+export type { CarAssetBytes, CarConnectionListener, CarSignalListener } from './car.js';

@@ -29,8 +29,14 @@ interface CarStub {
   bridge: CarBridge;
   calls: CallRecord[];
   setHandler(name: string, fn: (payload: unknown) => unknown): void;
-  emitSignal(subscriptionId: string, data: { name: string; value: number | null; at: string }): void;
-  emitConnection(subscriptionId: string, state: 'connected' | 'degraded' | 'disconnected' | 'unknown'): void;
+  emitSignal(
+    subscriptionId: string,
+    data: { name: string; value: number | null; at: string },
+  ): void;
+  emitConnection(
+    subscriptionId: string,
+    state: 'connected' | 'degraded' | 'disconnected' | 'unknown',
+  ): void;
 }
 
 function newCarStub(): CarStub {
@@ -207,9 +213,9 @@ describe('client.car.subscribe', () => {
     const stub = newCarStub();
     const client = MiniAppClient.withBridge(stub.bridge);
     const names = Array.from({ length: CAR_MAX_NAMES + 1 }, (_, i) => `n${i}`);
-    await expect(
-      client.car.subscribe({ names, onEvent: () => {} }),
-    ).rejects.toThrow(/too_many_names/);
+    await expect(client.car.subscribe({ names, onEvent: () => {} })).rejects.toThrow(
+      /too_many_names/,
+    );
     expect(stub.calls).toHaveLength(0);
   });
 
@@ -244,11 +250,7 @@ describe('client.car.command', () => {
     const stub = newCarStub();
     stub.setHandler('car.command', () => ({ ok: true }));
     const client = MiniAppClient.withBridge(stub.bridge);
-    await client.car.command(
-      'climate.power.toggle',
-      { state: 1 },
-      { idempotencyKey: 'fixed-key' },
-    );
+    await client.car.command('climate.power.toggle', { state: 1 }, { idempotencyKey: 'fixed-key' });
     const payload = stub.calls[0]?.payload as Record<string, unknown> | undefined;
     expect(payload?.idempotencyKey).toBe('fixed-key');
     expect(payload?.actionId).toBe('climate.power.toggle');
