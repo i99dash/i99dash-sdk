@@ -80,7 +80,7 @@ describe('sdk + admin-sdk integration — one window, both clients', () => {
 
     const mini = MiniAppClient.fromWindow();
     const admin = AdminClient.fromWindow({
-      context: { appId: 'diagnostics-pro', vin: 'VIN' },
+      context: { appId: 'diagnostics-pro', deviceId: 'byd:BYDMCKLE0PARD8801', brand: 'byd' },
       catalog: snapshotFromList([TIER1]),
     });
 
@@ -113,7 +113,7 @@ describe('sdk + admin-sdk integration — one window, both clients', () => {
     expect(() => MiniAppClient.fromWindow()).toThrow(NotInsideHostError);
     expect(() =>
       AdminClient.fromWindow({
-        context: { appId: 'x', vin: 'y' },
+        context: { appId: 'x', deviceId: 'byd:BYDMCKLE0PARD8801', brand: 'byd' },
         catalog: snapshotFromList([]),
       }),
     ).toThrow(NotInsideHostError);
@@ -124,7 +124,7 @@ describe('sdk + admin-sdk integration — one window, both clients', () => {
       throw new Error('host crashed');
     }));
     const admin = AdminClient.fromWindow({
-      context: { appId: 'x', vin: 'y' },
+      context: { appId: 'x', deviceId: 'byd:BYDMCKLE0PARD8801', brand: 'byd' },
       catalog: snapshotFromList([TIER1]),
     });
     let caught: unknown;
@@ -151,7 +151,7 @@ describe('sdk + admin-sdk integration — one window, both clients', () => {
       return new Promise(() => {});
     }));
     const admin = AdminClient.fromWindow({
-      context: { appId: 'x', vin: 'y' },
+      context: { appId: 'x', deviceId: 'byd:BYDMCKLE0PARD8801', brand: 'byd' },
       catalog: snapshotFromList([TIER1]),
     });
     // Convenience wrappers forward `InvokeOptions` end-to-end —

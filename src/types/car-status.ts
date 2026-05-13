@@ -49,26 +49,38 @@ export type CarDoors = z.infer<typeof CarDoorsSchema>;
 /// lock/unlock, window up/down) would live in a separate file,
 /// behind a separate permission scope, and never piggy-back on this.
 ///
-/// `bydDeviceId`, `at`, and `staleness` are required so consumers
-/// always have something to render and to gate UI on; everything
-/// else is optional because the bridge can't guarantee field
-/// availability.
+/// `deviceId`, `brand`, `at`, and `staleness` are required so
+/// consumers always have something to render and to gate UI on;
+/// everything else is optional because the bridge can't guarantee
+/// field availability.
 ///
-/// **v3.1 rename:** the field formerly called `vin` is now
-/// `bydDeviceId`. The schema accepts payloads with EITHER name on
-/// input (preferring `bydDeviceId` when both are present) and emits
-/// BOTH on the parsed output so old consumers reading `.vin` keep
-/// working. The `vin` field is `@deprecated` and will be removed in
-/// v4.0. The value carries BYD's media/cloud device handle
-/// (`bydXXXX...`), NOT the ISO 3779 chassis VIN — see MIGRATING.md.
+/// **v4.0 rename:** `bydDeviceId` was renamed to `deviceId` and a
+/// sibling `brand` field was added. `deviceId` carries the
+/// brand-prefixed canonical form (`byd:BYDMCKLE0PARD8801`,
+/// `tesla:5YJ3...`); `brand` is the lowercase brand string that
+/// matches the prefix. Hard cutover — no legacy aliases. The
+/// pre-v4 `vin` and `bydDeviceId` field names are gone.
+/// See MIGRATING.md.
 ///
 /// Strict — extra fields fail validation. This is the security
 /// regression fence that prevents an actuator field from being
 /// silently honoured if the host accidentally emits one.
-const CarStatusInternalSchema = z
+export const CarBrandSchema = z.enum(['byd', 'geely', 'nio', 'tesla']);
+export type CarBrand = z.infer<typeof CarBrandSchema>;
+
+export const CarStatusSchema = z
   .object({
-    bydDeviceId: z.string().min(1),
-    vin: z.string().min(1),
+    /// Brand-prefixed canonical device id, e.g. `byd:BYDMCKLE0PARD8801`.
+    /// Routing key everywhere off-device (HTTP paths, MQTT topics
+    /// after the brand segment, Redis keys, JSON wire payloads).
+    /// URL-encode before substituting into a route — the `:` is
+    /// reserved.
+    deviceId: z.string().min(1),
+    /// Lowercase brand wire string. Always agrees with the prefix in
+    /// `deviceId`; carried separately so consumers don't have to
+    /// parse the prefix on every read. Mismatch is a validation
+    /// error at the wire boundary.
+    brand: CarBrandSchema,
     /// ISO-8601 UTC, ``Z`` suffix.
     at: z.string(),
     staleness: CarStatusStalenessSchema,
@@ -82,36 +94,7 @@ const CarStatusInternalSchema = z
   })
   .strict();
 
-/// Normalize an incoming `vin` / `bydDeviceId` pair: accept either,
-/// prefer `bydDeviceId`, populate both on the output. Anything that
-/// isn't a plain object is returned untouched so the downstream zod
-/// parse still produces the correct error.
-function normalizeCarStatusIds(raw: unknown): unknown {
-  if (typeof raw !== 'object' || raw === null) return raw;
-  const obj = raw as Record<string, unknown>;
-  const newId = typeof obj.bydDeviceId === 'string' ? obj.bydDeviceId : undefined;
-  const oldId = typeof obj.vin === 'string' ? obj.vin : undefined;
-  const id = newId ?? oldId;
-  if (id == null) return raw; // let strict parse report the missing field
-  return { ...obj, bydDeviceId: id, vin: id };
-}
-
-export const CarStatusSchema = z.preprocess(normalizeCarStatusIds, CarStatusInternalSchema);
-type _CarStatusInferred = z.infer<typeof CarStatusInternalSchema>;
-/// Inferred TS type with JSDoc deprecation on the legacy `vin` field.
-/// Kept as an explicit interface so `@deprecated` reaches IDEs even
-/// though the runtime is zod-driven.
-export interface CarStatus extends Omit<_CarStatusInferred, 'vin' | 'bydDeviceId'> {
-  /// BYD media/cloud device handle for this car. NOT the chassis VIN
-  /// — see MIGRATING.md. Always populated; safe to read.
-  bydDeviceId: string;
-  /**
-   * @deprecated Renamed to `bydDeviceId` in v3.1. Still populated by
-   * the SDK during the v3.x line so existing consumers keep working;
-   * will be removed in v4.0. See MIGRATING.md.
-   */
-  vin: string;
-}
+export type CarStatus = z.infer<typeof CarStatusSchema>;
 
 /// Connection state — whether the host has fresh data from
 /// `CarBridge.readStatus()`. `connected` means the most recent poll

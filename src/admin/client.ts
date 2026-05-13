@@ -27,24 +27,22 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 /// Required context the host injects via the regular ``getContext``
 /// bridge. Used here only for `appId` so a mini-app calling on a
 /// stale catalog can detect drift; the host's dispatcher carries
-/// the authoritative (user, bydDeviceId, cert_hash) tuple.
+/// the authoritative (user, deviceId, cert_hash) tuple.
 ///
-/// **v3.1 rename:** `vin` was renamed to `bydDeviceId`. Both fields
-/// remain accepted during the v3.x line — pass either or both, and
-/// the SDK normalizes internally (preferring `bydDeviceId` when both
-/// are present). The legacy `vin` will be removed in v4.0.
-/// See MIGRATING.md.
+/// **v4.0 rename:** `bydDeviceId` was renamed to `deviceId` (the
+/// brand-prefixed canonical form, e.g. `byd:BYDMCKLE0PARD8801`) and
+/// a sibling `brand` field was added. Hard cutover — no legacy
+/// aliases. See MIGRATING.md.
 export interface AdminClientContext {
   appId: string;
-  /// BYD media/cloud device handle for the active car. NOT the chassis
-  /// VIN — see MIGRATING.md. Required when `vin` is not provided.
-  /// @since 3.1.0
-  bydDeviceId?: string;
-  /**
-   * @deprecated Renamed to `bydDeviceId` in v3.1. Still accepted as
-   * input; will be removed in v4.0. See MIGRATING.md.
-   */
-  vin?: string;
+  /// Brand-prefixed canonical device id for the active car
+  /// (`byd:BYDMCKLE0PARD8801`). Routing key for everything off-device.
+  /// @since 4.0.0
+  deviceId: string;
+  /// Lowercase brand wire string. Must agree with the prefix in
+  /// `deviceId`.
+  /// @since 4.0.0
+  brand: 'byd' | 'geely' | 'nio' | 'tesla';
 }
 
 /// Per-call options.
@@ -56,8 +54,8 @@ export interface InvokeOptions {
 /// Construction options. Phase-9 dropped the cap-related fields.
 export interface AdminClientOptions {
   bridge: AdminBridge;
-  /// Mini-app context. Pass either `bydDeviceId` (preferred) or the
-  /// legacy `vin` field; the SDK accepts both during the v3.x line.
+  /// Mini-app context. Pass the brand-prefixed `deviceId` and the
+  /// matching `brand`.
   context: AdminClientContext;
   /// Catalog snapshot — fetched once at boot from the host's
   /// catalog-mirror endpoint, then handed to the client. The host's

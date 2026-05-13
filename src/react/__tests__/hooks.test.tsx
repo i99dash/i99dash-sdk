@@ -39,7 +39,8 @@ const validContext = {
 
 function validStatus(overrides: Partial<CarStatus> = {}): CarStatus {
   return {
-    vin: 'WDB1234567',
+    deviceId: 'byd:BYDMCKLE0PARD8801',
+    brand: 'byd',
     at: '2026-04-27T12:00:00.000Z',
     staleness: 'fresh',
     isMoving: false,

@@ -1,57 +1,74 @@
 import { describe, expect, it } from 'vitest';
 import { CarStatusSchema, type CarStatus } from '../car-status.js';
 
-/// v3.1 deprecation-overlap contract:
-///   - Inputs may use the legacy `vin` key, the new `bydDeviceId` key,
-///     or both. Either route parses; both fields are populated on the
-///     parsed output so consumers reading either keep working.
-///   - When both are present, `bydDeviceId` wins (legacy alias is
-///     overwritten with the canonical value).
-///   - Missing both is still a parse error — the schema demands an id.
+/// v4.0 hard-cutover contract:
+///   - `deviceId` is the brand-prefixed canonical (`byd:BYDMCKLE...`).
+///   - `brand` is the lowercase brand string sibling field.
+///   - No legacy aliases — `vin` and `bydDeviceId` fail strict parse.
+///   - Missing either id field is still a parse error.
 ///
-/// This file is the regression fence so we don't accidentally drop the
-/// `vin` alias before v4.0.
+/// This file is the regression fence pinning the post-rename shape so
+/// nobody accidentally re-introduces a `vin` / `bydDeviceId` alias.
 
 const baseValid = {
-  at: '2026-05-07T08:00:00.000Z',
+  at: '2026-05-13T08:00:00.000Z',
   staleness: 'fresh' as const,
 };
 
-describe('CarStatusSchema — vin/bydDeviceId deprecation overlap', () => {
-  it('accepts payloads with the legacy `vin` field and populates `bydDeviceId`', () => {
+describe('CarStatusSchema — v4.0 deviceId + brand', () => {
+  it('accepts payloads with the canonical `deviceId` + `brand` pair', () => {
     const parsed: CarStatus = CarStatusSchema.parse({
       ...baseValid,
-      vin: 'BYD-OLD-NAME-001',
+      deviceId: 'byd:BYDMCKLE0PARD8801',
+      brand: 'byd',
     });
-    expect(parsed.vin).toBe('BYD-OLD-NAME-001');
-    expect(parsed.bydDeviceId).toBe('BYD-OLD-NAME-001');
+    expect(parsed.deviceId).toBe('byd:BYDMCKLE0PARD8801');
+    expect(parsed.brand).toBe('byd');
   });
 
-  it('accepts payloads with the new `bydDeviceId` field and populates `vin`', () => {
-    const parsed: CarStatus = CarStatusSchema.parse({
-      ...baseValid,
-      bydDeviceId: 'BYD-NEW-NAME-002',
-    });
-    expect(parsed.bydDeviceId).toBe('BYD-NEW-NAME-002');
-    expect(parsed.vin).toBe('BYD-NEW-NAME-002');
+  it('rejects payloads with the legacy `bydDeviceId` field (no alias)', () => {
+    expect(() =>
+      CarStatusSchema.parse({
+        ...baseValid,
+        bydDeviceId: 'BYDMCKLE0PARD8801',
+        brand: 'byd',
+      }),
+    ).toThrow();
   });
 
-  it('prefers `bydDeviceId` when both are present', () => {
-    const parsed: CarStatus = CarStatusSchema.parse({
-      ...baseValid,
-      vin: 'old',
-      bydDeviceId: 'new',
-    });
-    expect(parsed.bydDeviceId).toBe('new');
-    expect(parsed.vin).toBe('new');
+  it('rejects payloads with the legacy `vin` field (no alias)', () => {
+    expect(() =>
+      CarStatusSchema.parse({
+        ...baseValid,
+        vin: 'BYDMCKLE0PARD8801',
+        brand: 'byd',
+      }),
+    ).toThrow();
   });
 
   it('rejects payloads with neither id field', () => {
-    expect(() => CarStatusSchema.parse({ ...baseValid })).toThrow();
+    expect(() => CarStatusSchema.parse({ ...baseValid, brand: 'byd' })).toThrow();
   });
 
-  it('rejects empty-string ids on either name', () => {
-    expect(() => CarStatusSchema.parse({ ...baseValid, vin: '' })).toThrow();
-    expect(() => CarStatusSchema.parse({ ...baseValid, bydDeviceId: '' })).toThrow();
+  it('rejects payloads missing `brand`', () => {
+    expect(() =>
+      CarStatusSchema.parse({ ...baseValid, deviceId: 'byd:BYDMCKLE0PARD8801' }),
+    ).toThrow();
+  });
+
+  it('rejects unknown brand values', () => {
+    expect(() =>
+      CarStatusSchema.parse({
+        ...baseValid,
+        deviceId: 'ford:1FTFW1ET5DFC10312',
+        brand: 'ford',
+      }),
+    ).toThrow();
+  });
+
+  it('rejects empty-string device id', () => {
+    expect(() =>
+      CarStatusSchema.parse({ ...baseValid, deviceId: '', brand: 'byd' }),
+    ).toThrow();
   });
 });

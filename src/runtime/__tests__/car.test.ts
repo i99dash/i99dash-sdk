@@ -68,7 +68,8 @@ function newStubBridge(): { bridge: CarStatusBridge; state: StubState } {
 
 function validStatus(overrides: Partial<CarStatus> = {}): CarStatus {
   return {
-    vin: 'WDB1234567',
+    deviceId: 'byd:BYDMCKLE0PARD8801',
+    brand: 'byd',
     at: '2026-04-27T12:00:00.000Z',
     staleness: 'fresh',
     isMoving: false,
@@ -164,7 +165,7 @@ describe('client.car.onStatusChange — lifecycle', () => {
 
     // Suppress the dev-mode console.warn the controller emits
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    state.notifyStatus?.({ vin: 'X' /* missing required fields */ });
+    state.notifyStatus?.({ deviceId: 'X' /* missing required fields */ });
     expect(cb).not.toHaveBeenCalled();
     warn.mockRestore();
   });

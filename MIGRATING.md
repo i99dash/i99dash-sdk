@@ -1,3 +1,100 @@
+# Migrating to v4.0 — `bydDeviceId` → `deviceId` (+ `brand`)
+
+`4.0.0` is a hard cutover. The field formerly named `bydDeviceId`
+(itself the v3.1 rename of `vin`) is now `deviceId`, and it now
+carries the **brand-prefixed canonical form** — `byd:BYDMCKLE0PARD8801`
+instead of the bare `BYDMCKLE0PARD8801`. A sibling `brand` field is
+added so consumers don't have to parse the prefix on every read.
+
+No compat shim. No legacy alias. No preprocess normalizer. Pre-release
+posture across the platform — every host, every backend, every
+consumer renames in lockstep with this SDK release. See the
+cross-project contract at `RENAME_BYD_DEVICE_ID_CONTRACT.md` in the
+i99dash workspace root.
+
+## Why?
+
+We're onboarding non-BYD brands (Tesla, NIO, Geely). The routing key
+needs to be brand-aware end-to-end so:
+
+- MQTT topics can be `cars/{brand}/{device_id}/...` (Mosquitto ACLs
+  scope per `(brand, device_id)` without parsing payload).
+- HTTP routes drop the `/byd/` prefix and become `/api/v1/cars/...`
+  with a brand-prefixed `device_id` in the path.
+- The DB stores the prefixed form so a future Tesla-adapter row never
+  collides with a BYD-adapter row that happens to share a numeric
+  suffix.
+
+Naming the field `bydDeviceId` baked the brand into the type name. Now
+the type is brand-agnostic.
+
+## What changed — `CarStatus`
+
+```diff
+ const status: CarStatus = await client.car.readStatus();
+-console.log(status.bydDeviceId);   // gone in v4.0 (was the v3.1 name)
+-console.log(status.vin);           // gone in v4.0 (was the pre-v3.1 name)
++console.log(status.deviceId);      // 'byd:BYDMCKLE0PARD8801'
++console.log(status.brand);         // 'byd'
+```
+
+The Zod schema is **strict** — payloads that still carry `vin` or
+`bydDeviceId` fail parse. Hosts must emit `{deviceId, brand}` on every
+`onStatusChange` push. There is no longer a `preprocess` normalizer
+quietly accepting the old shape.
+
+`brand` must be one of `'byd' | 'geely' | 'nio' | 'tesla'` (exported
+as `CarBrand` / `CarBrandSchema`). The prefix in `deviceId` must match
+`brand`. Wire-level mismatches between the two are caught upstream
+(backend returns 422); the SDK's role is to refuse malformed
+snapshots.
+
+## What changed — `AdminClientContext`
+
+```diff
+ AdminClient.fromWindow({
+-  context: { appId: 'diag', bydDeviceId: 'bydE51DB8F5AE5E3713' },
++  context: { appId: 'diag', deviceId: 'byd:BYDMCKLE0PARD8801', brand: 'byd' },
+   catalog: snapshot,
+ });
+```
+
+Both `deviceId` and `brand` are required. The host injects them
+through the regular `getContext` bridge — see the host's adapter
+release notes for how the migration lands on its side.
+
+## Routes (in consumer projects, not this SDK)
+
+If you build URLs in your mini-app or website, the `/byd/` segment is
+gone and the `device_id` is URL-encoded because the prefix contains
+`:`:
+
+```diff
+-fetch(`/api/v1/byd/${bydDeviceId}/status`)
++fetch(`/api/v1/cars/${encodeURIComponent(deviceId)}/status`)
+```
+
+`byd:BYDMCKLE0PARD8801` on the wire becomes `byd%3ABYDMCKLE0PARD8801`
+in the path. FastAPI's path-param parser decodes it; you must encode
+before substitution.
+
+## Timeline
+
+- **v4.0.0** (this release): hard cutover. `vin` / `bydDeviceId`
+  payloads fail parse. Upgrade in lockstep with the matching backend
+  + host release.
+- No further `v3.x` patches — `3.x` consumers stay on `3.x` until they
+  cut over.
+
+## Compat-test reference
+
+`src/types/__tests__/car-status-deprecation.test.ts` pins the
+post-rename shape: it asserts the new keys are required AND that the
+legacy keys are rejected, so we can't accidentally re-introduce a
+back-compat shim under `strict()`.
+
+---
+
 # Migrating to v3.1 — `vin` → `bydDeviceId`
 
 `3.1.0` renames the public `vin` field to `bydDeviceId` across the SDK's

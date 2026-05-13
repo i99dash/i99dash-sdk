@@ -28,6 +28,8 @@ export {
   type CarDoorState,
   CarConnectionStateSchema,
   type CarConnectionState,
+  CarBrandSchema,
+  type CarBrand,
 } from './car-status.js';
 
 export { HostCapabilitiesSchema, type HostCapabilities } from './capabilities.js';

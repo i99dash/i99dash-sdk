@@ -47,7 +47,8 @@ function makeClient(
     bridge: new FakeAdminBridge(exec),
     context: {
       appId: 'diagnostics-pro',
-      vin: 'WDB1234567',
+      deviceId: 'byd:BYDMCKLE0PARD8801',
+      brand: 'byd',
     },
     catalog: snapshotFromList([TIER1, TIER2, INSTALL]),
   });

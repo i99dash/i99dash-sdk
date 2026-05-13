@@ -36,8 +36,8 @@ export const UI_HTML = /* html */ `<!doctype html>
   <fieldset>
     <legend>context</legend>
     <label>
-      <span>BYD device ID (activeCarId)</span>
-      <input type="text" id="bydDeviceId" />
+      <span>device ID (activeCarId)</span>
+      <input type="text" id="deviceId" />
     </label>
     <label>
       <span>locale</span>
@@ -63,7 +63,7 @@ export const UI_HTML = /* html */ `<!doctype html>
   <script>
     (async function () {
       const dRef = document.getElementById('driving');
-      const vRef = document.getElementById('bydDeviceId');
+      const vRef = document.getElementById('deviceId');
       const lRef = document.getElementById('locale');
       const tRef = document.getElementById('theme');
       const sRef = document.getElementById('state');

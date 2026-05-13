@@ -50,7 +50,7 @@ export class BootController extends BaseFamilyController {
 
   /**
    * Declare that [packageName] should auto-launch on cold boot.
-   * Idempotent on `(user, bydDeviceId, app, packageName)` — calling
+   * Idempotent on `(user, deviceId, app, packageName)` — calling
    * `set` again with the same `packageName` replaces the prior row.
    */
   async set(
@@ -71,7 +71,7 @@ export class BootController extends BaseFamilyController {
 
   /**
    * Every boot declaration this mini-app has set under the active
-   * (user, bydDeviceId). Other mini-apps' rows are not visible.
+   * (user, deviceId). Other mini-apps' rows are not visible.
    */
   async list(invokeOpts: InvokeFamilyOptions = {}): Promise<BootEntry[]> {
     const r = await this.invoke<{ entries: BootEntry[] }>('list', {}, invokeOpts);

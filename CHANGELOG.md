@@ -2,6 +2,17 @@
 
 All notable changes to the `i99dash` package are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.0.0](https://github.com/i99dash/i99dash-sdk/compare/v3.1.0...v4.0.0) (2026-05-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **types:** rename `bydDeviceId` → `deviceId` across the public surface (`CarStatus`, `AdminClientContext`) and add a sibling `brand: 'byd' | 'geely' | 'nio' | 'tesla'` field. `deviceId` now carries the brand-prefixed canonical form (`byd:BYDMCKLE0PARD8801`) — the same value that flows over MQTT topics, HTTP routes (URL-encoded, since `:` is reserved), Redis keys, and JSON wire payloads. The pre-v4 `vin` deprecated alias and the `bydDeviceId` name are both gone — hard cutover, no compat shim, no preprocess normalizer. Hosts must emit `{deviceId, brand}` on every `CarStatus` snapshot; mini-apps must pass both fields when constructing an `AdminClient`. The schema is `strict` so any payload that still carries the legacy field names fails parse. Route builders (in consumer projects, not this SDK) move from `/api/v1/byd/{byd_device_id}/...` to `/api/v1/cars/{encodeURIComponent(deviceId)}/...`. See MIGRATING.md and `RENAME_BYD_DEVICE_ID_CONTRACT.md` for the cross-project contract.
+
+### Features
+
+* **types:** export `CarBrandSchema` + `CarBrand` enum (`'byd' | 'geely' | 'nio' | 'tesla'`) alongside the renamed `CarStatus` shape so downstream code can typecheck brand strings against the same allowlist the schema validates against.
+
 ## [3.1.0](https://github.com/i99dash/i99dash-sdk/compare/v3.0.0...v3.1.0) (2026-05-07)
 
 
