@@ -12,8 +12,10 @@ import {
   FamilyOpError,
   FamilyUnavailableError,
   decodeFamilyEnvelope,
+  invokeFamily,
+  newIdempotencyKey,
 } from '../family-controller.js';
-import { SurfaceController } from '../surface.js';
+import { SURFACE_ROUTE_REGEX, SurfaceController, SurfaceRouteError } from '../surface.js';
 
 class FakeFamilyBridge implements FamilyBridge {
   readonly calls: Array<{
@@ -265,5 +267,137 @@ describe('DisplayController.onChange', () => {
     });
     // No unsubscribe op should fire since we never registered host-side.
     expect(bridge.calls.every((c) => c.op !== 'unsubscribe')).toBe(true);
+  });
+});
+
+describe('invokeFamily (free-function path)', () => {
+  it('decodes a success envelope and forwards params', async () => {
+    const bridge = new FakeFamilyBridge((_fam, _op) => ({
+      success: true,
+      data: { hello: 'world' },
+    }));
+    const out = await invokeFamily<{ hello: string }>(bridge, 'pkg', 'launch', { id: 'x.y' });
+    expect(out).toEqual({ hello: 'world' });
+    expect(bridge.calls[0]!.familyId).toBe('pkg');
+    expect(bridge.calls[0]!.op).toBe('launch');
+    expect(bridge.calls[0]!.params).toEqual({ id: 'x.y' });
+    expect(bridge.calls[0]!.idempotencyKey).toBeTruthy();
+  });
+
+  it('uses caller-supplied idempotencyKey when provided', async () => {
+    const bridge = new FakeFamilyBridge(() => ({ success: true, data: {} }));
+    await invokeFamily(bridge, 'pkg', 'launch', {}, { idempotencyKey: 'caller-key' });
+    expect(bridge.calls[0]!.idempotencyKey).toBe('caller-key');
+  });
+
+  it('throws FamilyUnavailableError on a non-family bridge', async () => {
+    await expect(invokeFamily(new NonFamilyBridge(), 'pkg', 'launch')).rejects.toThrow(
+      FamilyUnavailableError,
+    );
+  });
+
+  it('throws FamilyOpError on {success: false}', async () => {
+    const bridge = new FakeFamilyBridge(() => ({
+      success: false,
+      error: { code: 'denied', message: 'nope' },
+    }));
+    await expect(invokeFamily(bridge, 'surface', 'create')).rejects.toMatchObject({
+      name: 'FamilyOpError',
+      errorCode: 'denied',
+    });
+  });
+});
+
+describe('newIdempotencyKey', () => {
+  it('returns a non-empty string', () => {
+    const k = newIdempotencyKey();
+    expect(typeof k).toBe('string');
+    expect(k.length).toBeGreaterThan(0);
+  });
+  it('returns a different value each call', () => {
+    // 1000 calls; collision probability of randomUUID is ~0 here.
+    const seen = new Set<string>();
+    for (let i = 0; i < 1000; i++) seen.add(newIdempotencyKey());
+    expect(seen.size).toBe(1000);
+  });
+});
+
+describe('SurfaceController.buildRoute', () => {
+  it('returns the bare path when no params', () => {
+    expect(SurfaceController.buildRoute('/cluster.html')).toBe('/cluster.html');
+  });
+
+  it('encodes a single param as ?k=v', () => {
+    expect(SurfaceController.buildRoute('/cluster.html', { layout: 'abc' })).toBe(
+      '/cluster.html?layout=abc',
+    );
+  });
+
+  it('joins multiple params with &', () => {
+    const route = SurfaceController.buildRoute('/x', { a: '1', b: '2' });
+    expect(route).toBe('/x?a=1&b=2');
+  });
+
+  it('coerces numbers and booleans', () => {
+    expect(SurfaceController.buildRoute('/x', { n: 42, b: true })).toBe('/x?n=42&b=true');
+  });
+
+  it('drops null and undefined params', () => {
+    expect(SurfaceController.buildRoute('/x', { a: '1', b: null, c: undefined })).toBe('/x?a=1');
+  });
+
+  it("re-encodes ' ( ) which encodeURIComponent leaves raw", () => {
+    const route = SurfaceController.buildRoute('/x', { v: "a'b(c)" });
+    expect(route).toBe('/x?v=a%27b%28c%29');
+    expect(SURFACE_ROUTE_REGEX.test(route)).toBe(true);
+  });
+
+  it('produces a route that passes the host regex for the gauge-builder case', () => {
+    // The exact shape that tripped gauge-builder v0.1.6 — base64 with `=`
+    // padding, in a query param. v0.1.7 fixed by using `?` instead of `#`.
+    const encoded = btoa(JSON.stringify({ slots: [null, 'rpm', null], version: 1 }));
+    const route = SurfaceController.buildRoute('/cluster.html', { layout: encoded });
+    expect(SURFACE_ROUTE_REGEX.test(route)).toBe(true);
+  });
+
+  it('throws SurfaceRouteError on an empty path', () => {
+    expect(() => SurfaceController.buildRoute('')).toThrow(SurfaceRouteError);
+  });
+
+  it("throws SurfaceRouteError on a path missing leading '/'", () => {
+    expect(() => SurfaceController.buildRoute('cluster.html')).toThrow(SurfaceRouteError);
+  });
+
+  it('throws SurfaceRouteError on a path with forbidden chars', () => {
+    expect(() => SurfaceController.buildRoute('/cluster?foo')).toThrow(SurfaceRouteError);
+    expect(() => SurfaceController.buildRoute('/cluster#x')).toThrow(SurfaceRouteError);
+    expect(() => SurfaceController.buildRoute('/cluster space')).toThrow(SurfaceRouteError);
+  });
+});
+
+describe('SURFACE_ROUTE_REGEX', () => {
+  it('matches bundle-relative paths', () => {
+    expect(SURFACE_ROUTE_REGEX.test('/')).toBe(true);
+    expect(SURFACE_ROUTE_REGEX.test('/foo')).toBe(true);
+    expect(SURFACE_ROUTE_REGEX.test('/foo/bar.html')).toBe(true);
+  });
+
+  it('matches paths with query strings (including # inside query)', () => {
+    expect(SURFACE_ROUTE_REGEX.test('/cluster.html?layout=abc')).toBe(true);
+    expect(SURFACE_ROUTE_REGEX.test('/x?a=1&b=2')).toBe(true);
+    expect(SURFACE_ROUTE_REGEX.test('/x?a=#hash')).toBe(true);
+  });
+
+  it('rejects bare #fragment URLs (the gauge-builder v0.1.6 trap)', () => {
+    expect(SURFACE_ROUTE_REGEX.test('/cluster.html#layout=abc')).toBe(false);
+  });
+
+  it("rejects ' ( ) which encodeURIComponent leaves raw", () => {
+    expect(SURFACE_ROUTE_REGEX.test("/x?v=a'b")).toBe(false);
+    expect(SURFACE_ROUTE_REGEX.test('/x?v=a(b)')).toBe(false);
+  });
+
+  it('rejects paths without leading slash', () => {
+    expect(SURFACE_ROUTE_REGEX.test('foo')).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { Bridge, CapabilitiesBridge } from '../bridge.js';
+import type { Bridge, CapabilitiesBridge, FamilyBridge } from '../bridge.js';
 import { MiniAppClient } from '../client.js';
 import {
   BridgeTimeoutError,
@@ -8,6 +8,7 @@ import {
   InvalidResponseError,
   NotInsideHostError,
 } from '../errors.js';
+import { FamilyOpError, FamilyUnavailableError } from '../family-controller.js';
 
 const validContext = {
   userId: 'u-1',
@@ -239,5 +240,60 @@ describe('MiniAppClient.capabilities + has', () => {
     };
     const c = MiniAppClient.withBridge(bridge);
     await expect(c.capabilities()).rejects.toBeInstanceOf(InvalidResponseError);
+  });
+});
+
+describe('MiniAppClient.callFamily', () => {
+  function makeFamilyBridge(handler: (familyId: string, op: string) => unknown): {
+    bridge: FamilyBridge;
+    calls: Array<{
+      familyId: string;
+      op: string;
+      params: Record<string, unknown> | undefined;
+      idempotencyKey: string | undefined;
+    }>;
+  } {
+    const calls: Array<{
+      familyId: string;
+      op: string;
+      params: Record<string, unknown> | undefined;
+      idempotencyKey: string | undefined;
+    }> = [];
+    const bridge: FamilyBridge = {
+      getContext: async () => validContext,
+      callApi: async () => ({ success: true, data: null }),
+      callFamily: async (familyId, op, params, idempotencyKey) => {
+        calls.push({ familyId, op, params, idempotencyKey });
+        return handler(familyId, op);
+      },
+    };
+    return { bridge, calls };
+  }
+
+  it('forwards familyId / op / params and auto-generates an idempotency key', async () => {
+    const { bridge, calls } = makeFamilyBridge(() => ({ success: true, data: { ok: true } }));
+    const c = MiniAppClient.withBridge(bridge);
+    const out = await c.callFamily<{ ok: boolean }>('pkg', 'launch', { id: 'x.y' });
+    expect(out).toEqual({ ok: true });
+    expect(calls[0]).toMatchObject({
+      familyId: 'pkg',
+      op: 'launch',
+      params: { id: 'x.y' },
+    });
+    expect(calls[0]!.idempotencyKey).toBeTruthy();
+  });
+
+  it('throws FamilyUnavailableError on a non-family bridge', async () => {
+    const c = MiniAppClient.withBridge(bridgeReturning({ api: { success: true, data: null } }));
+    await expect(c.callFamily('pkg', 'launch')).rejects.toBeInstanceOf(FamilyUnavailableError);
+  });
+
+  it('throws FamilyOpError on {success: false}', async () => {
+    const { bridge } = makeFamilyBridge(() => ({
+      success: false,
+      error: { code: 'denied', message: 'nope' },
+    }));
+    const c = MiniAppClient.withBridge(bridge);
+    await expect(c.callFamily('surface', 'create')).rejects.toBeInstanceOf(FamilyOpError);
   });
 });

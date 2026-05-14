@@ -68,10 +68,22 @@ export {
 } from './pkg.js';
 export {
   SurfaceController,
+  SurfaceRouteError,
+  SURFACE_ROUTE_REGEX,
   type SurfaceCreateRequest,
   type SurfaceCreateResult,
   type SurfaceSnapshot,
 } from './surface.js';
+export {
+  FamilyOpError,
+  FamilyUnavailableError,
+  decodeFamilyEnvelope,
+  invokeFamily,
+  newIdempotencyKey,
+  type FamilyResponse,
+  type InvokeFamilyOptions,
+  type UnsubscribeFn,
+} from './family-controller.js';
 export {
   BridgeTimeoutError,
   BridgeTransportError,

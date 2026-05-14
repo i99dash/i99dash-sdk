@@ -68,7 +68,14 @@ export class FamilyUnavailableError extends SDKError {
   }
 }
 
-function newIdempotencyKey(): string {
+/// Generate a fresh idempotency key for a family call. Uses
+/// `crypto.randomUUID()` when present (WebView, dev-server), and
+/// falls back to a 16-hex-char id for environments without
+/// SubtleCrypto (jsdom, older test runners). Exported so probe /
+/// diagnostic mini-apps (bridge-doctor) can mint keys with the
+/// same shape the SDK uses internally — without re-implementing
+/// the crypto-feature-detect.
+export function newIdempotencyKey(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
   }
@@ -104,6 +111,36 @@ export function decodeFamilyEnvelope<T>(familyId: string, op: string, raw: unkno
   );
 }
 
+/// One-shot family invoke without a typed controller. Used by:
+///   * `BaseFamilyController.invoke` — the existing typed controller
+///     path (now a thin delegation, so there's one place to fix
+///     bugs in the call chain).
+///   * `MiniAppClient.callFamily` — probe / diagnostic mini-apps
+///     (bridge-doctor) that test arbitrary family handlers.
+///   * Forward-compat: a future family that ships on the host
+///     before its typed controller lands in this package.
+///
+/// Re-validates the bridge defensively so the static-typing path
+/// (`BaseFamilyController` already narrowed) and the dynamic path
+/// (free callers passing any `Bridge`) share one error shape.
+export async function invokeFamily<T>(
+  bridge: Bridge,
+  familyId: string,
+  op: string,
+  params?: Record<string, unknown>,
+  opts: InvokeFamilyOptions = {},
+): Promise<T> {
+  if (!isFamilyBridge(bridge)) {
+    throw new FamilyUnavailableError(
+      familyId,
+      `bridge does not implement FamilyBridge — host build is too old`,
+    );
+  }
+  const key = opts.idempotencyKey ?? newIdempotencyKey();
+  const raw = await bridge.callFamily(familyId, op, params, key);
+  return decodeFamilyEnvelope<T>(familyId, op, raw);
+}
+
 /// Base class concrete controllers extend. Holds the bridge +
 /// the static family id; concrete controllers implement typed
 /// methods that compose [invoke].
@@ -127,9 +164,7 @@ export abstract class BaseFamilyController {
     params?: Record<string, unknown>,
     opts: InvokeFamilyOptions = {},
   ): Promise<T> {
-    const key = opts.idempotencyKey ?? newIdempotencyKey();
-    const raw = await this.bridge.callFamily(this.familyId, op, params, key);
-    return decodeFamilyEnvelope<T>(this.familyId, op, raw);
+    return invokeFamily<T>(this.bridge, this.familyId, op, params, opts);
   }
 
   /// Subscribe to the host's event channel for this family. Calls

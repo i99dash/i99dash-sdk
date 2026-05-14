@@ -18,6 +18,7 @@ import { GestureController } from './gesture.js';
 import { PkgController } from './pkg.js';
 import { SurfaceController } from './surface.js';
 import { CallApiFailedError, InvalidResponseError, NotInsideHostError } from './errors.js';
+import { invokeFamily, type InvokeFamilyOptions } from './family-controller.js';
 import { PermissionDeniedAggregator, type PermissionDeniedListener } from './permission-denied.js';
 import { withTimeout } from './util/timeout.js';
 
@@ -250,6 +251,31 @@ export class MiniAppClient {
   async has(scope: string): Promise<boolean> {
     const caps = await this.capabilities();
     return caps.families.includes(scope);
+  }
+
+  /// One-shot family-op invoke. Use this when the family / op pair
+  /// does not have a typed wrapper on this client — probe apps
+  /// (bridge-doctor), diagnostics, or a host that ships a new family
+  /// ahead of the SDK landing its typed controller. For documented
+  /// families, prefer the typed accessors (`client.surface.create`,
+  /// `client.display.list`, etc.) — they carry full type information
+  /// for params and return shapes.
+  ///
+  /// Throws `FamilyUnavailableError` if the host's bridge doesn't
+  /// ship the family-call surface (very old hosts), and
+  /// `FamilyOpError` on a `{success: false}` envelope so consumers
+  /// can branch on `err.errorCode`.
+  ///
+  ///     const data = await client.callFamily<{ ok: true }>(
+  ///       'pkg', 'launch_cluster', { packageName: 'x.y' },
+  ///     );
+  async callFamily<T = unknown>(
+    familyId: string,
+    op: string,
+    params?: Record<string, unknown>,
+    opts: InvokeFamilyOptions = {},
+  ): Promise<T> {
+    return invokeFamily<T>(this.bridge, familyId, op, params, opts);
   }
 
   /// Subscribe an analytics-style handler to every `permission_denied`
