@@ -2,6 +2,14 @@
 
 All notable changes to the `i99dash` package are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [5.1.0](https://github.com/i99dash/i99dash-sdk/compare/v5.0.0...v5.1.0) (2026-05-14)
+
+
+### Features
+
+* re-export SurfaceController + add pkg controller tests ([903aa16](https://github.com/i99dash/i99dash-sdk/commit/903aa16e66093d834f04d71c7184b8eefba1ab55))
+* **sdk:** add MiniAppClient.callFamily + SurfaceController.buildRoute (v5.1.0) ([216b7a7](https://github.com/i99dash/i99dash-sdk/commit/216b7a7b7687c69f266985a016409f4dff14618b))
+
 ## [5.0.0](https://github.com/i99dash/i99dash-sdk/compare/v4.0.0...v5.0.0) (2026-05-13)
 
 
