@@ -3,7 +3,7 @@
 The SDK side (schema + the single `evaluateCompatibility()` engine) is
 **done and shipped in this package**. A manifest field is inert until
 the catalog and host honor it; this spec defines that lockstep work so
-both consume the *same* SDK function rather than re-deriving the rules.
+both consume the _same_ SDK function rather than re-deriving the rules.
 
 ## What shipped in the SDK
 

@@ -140,8 +140,6 @@ describe('evaluateCompatibility', () => {
   });
 
   it('CompatTargetSchema is strict (rejects unknown keys)', () => {
-    expect(() =>
-      CompatTargetSchema.parse({ dilinkFamily: 'di5.1', bogus: true }),
-    ).toThrow();
+    expect(() => CompatTargetSchema.parse({ dilinkFamily: 'di5.1', bogus: true })).toThrow();
   });
 });

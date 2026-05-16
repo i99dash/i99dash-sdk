@@ -84,7 +84,10 @@ export interface CompatResult {
 function semverishGte(have: string | undefined, need: string): boolean | null {
   if (!have) return null;
   const parse = (v: string): number[] | null => {
-    const parts = v.trim().split('.').map((s) => Number.parseInt(s, 10));
+    const parts = v
+      .trim()
+      .split('.')
+      .map((s) => Number.parseInt(s, 10));
     if (parts.length === 0 || parts.some((n) => !Number.isFinite(n))) return null;
     return parts;
   };

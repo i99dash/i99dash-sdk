@@ -53,9 +53,7 @@ describe('MiniAppManifest — requires / permissions / privileged', () => {
   });
 
   it('rejects an empty requires.dilink array (nonempty)', () => {
-    expect(() =>
-      MiniAppManifestSchema.parse({ ...base, requires: { dilink: [] } }),
-    ).toThrow();
+    expect(() => MiniAppManifestSchema.parse({ ...base, requires: { dilink: [] } })).toThrow();
   });
 
   it('keeps a forward-compat requires.* key (passthrough, no throw)', () => {
