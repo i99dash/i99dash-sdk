@@ -2,6 +2,13 @@
 
 All notable changes to the `i99dash` package are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [5.2.0](https://github.com/i99dash/i99dash-sdk/compare/v5.1.0...v5.2.0) (2026-05-16)
+
+
+### Features
+
+* **sdk:** manifest requires + evaluateCompatibility compatibility gate ([#53](https://github.com/i99dash/i99dash-sdk/issues/53)) ([452772c](https://github.com/i99dash/i99dash-sdk/commit/452772c706d516f2c499d3374e4cb0f3d792336c))
+
 ## [5.1.0](https://github.com/i99dash/i99dash-sdk/compare/v5.0.0...v5.1.0) (2026-05-14)
 
 
