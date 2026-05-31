@@ -123,6 +123,7 @@ export async function runUpgrade(opts: {
   const manifest = await fetchManifest(resolvedBackendUrl());
   if (!manifest?.version) {
     logger.warn(`${NAME} is not available on the download channel right now.`);
+    process.exitCode = 1;
     return;
   }
 
@@ -146,6 +147,7 @@ export async function runUpgrade(opts: {
   const asset = plat ? manifest.assets.find((a) => a.platform === plat) : undefined;
   if (!asset) {
     logger.error(`no ${plat ?? process.platform} build is published for v${latest}.`);
+    process.exitCode = 1;
     return;
   }
 
@@ -153,12 +155,14 @@ export async function runUpgrade(opts: {
   const res = await fetch(asset.url);
   if (!res.ok) {
     logger.error(`download failed: ${res.status}`);
+    process.exitCode = 1;
     return;
   }
   const buf = Buffer.from(await res.arrayBuffer());
   const digest = createHash('sha256').update(buf).digest('hex');
   if (asset.sha256 && digest.toLowerCase() !== asset.sha256.toLowerCase()) {
     logger.error('checksum mismatch — refusing to install.');
+    process.exitCode = 1;
     return;
   }
 
@@ -174,6 +178,7 @@ export async function runUpgrade(opts: {
         `permission denied writing ${target}. Re-run with elevated privileges, ` +
           `or reinstall to a writable location.`,
       );
+      process.exitCode = 1;
       return;
     }
     throw err;
