@@ -11,7 +11,14 @@ import { createHash, createPrivateKey, sign as cryptoSign } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { parsePrivateKey, type PrivateKey } from 'sshpk';
+import type { PrivateKey } from 'sshpk';
+// sshpk is a CommonJS module: a static named import
+// (`import { parsePrivateKey }`) throws "Named export not found" once the
+// CLI is bundled to ESM (dist/cli.js). Read the export off the default
+// (module.exports) import instead, which Node's CJS interop guarantees.
+import sshpk from 'sshpk';
+
+const { parsePrivateKey } = sshpk;
 
 /// ssh-keygen's default ed25519 key location.
 export const DEFAULT_KEY_PATH = '~/.ssh/id_ed25519';
