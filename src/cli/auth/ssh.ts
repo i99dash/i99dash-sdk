@@ -77,8 +77,23 @@ export function loadKey(keyPath?: string, passphrase?: string): LoadedKey {
     'SHA256:' + createHash('sha256').update(blob).digest('base64').replace(/=+$/, '');
 
   // sshpk parses the OpenSSH key; Node `crypto` does the (verified-raw)
-  // ed25519 signing the server checks. Bridge via PKCS#8 PEM.
-  const nodeKey = createPrivateKey({ key: key.toBuffer('pkcs8'), format: 'pem', type: 'pkcs8' });
+  // ed25519 signing the server checks. We bridge by building the
+  // *canonical* ed25519 PKCS#8 DER ourselves from the 32-byte private
+  // seed: sshpk's own `toBuffer('pkcs8')` emits an ed25519 structure
+  // that OpenSSL 3 (Node 20+/CI) rejects with ERR_OSSL_UNSUPPORTED,
+  // whereas the OID-prefixed DER below is portable across OpenSSL 1.1/3.
+  const kData = (key as unknown as { part: { k: { data: Buffer } } }).part.k.data;
+  // OpenSSH stores ed25519 private as seed(32)||public(32); the PKCS#8
+  // OCTET STRING is just the 32-byte seed (the leading 32 bytes).
+  const seed = kData.length >= 32 ? kData.subarray(0, 32) : kData;
+  if (seed.length !== 32) {
+    throw new SshKeyError(`unexpected ed25519 private key size in ${p}`);
+  }
+  const pkcs8 = Buffer.concat([
+    Buffer.from('302e020100300506032b657004220420', 'hex'), // ed25519 PKCS#8 prefix
+    seed,
+  ]);
+  const nodeKey = createPrivateKey({ key: pkcs8, format: 'der', type: 'pkcs8' });
 
   return {
     publicOpenssh,
