@@ -1,61 +1,73 @@
-import open from 'open';
-import { BackendDeviceCodeClient } from '../auth/device-code.js';
-import { saveAccessToken } from '../auth/session.js';
 import { getKeychain } from '../auth/keychain.js';
-import { OAUTH_CLIENT_ID, resolvedBackendUrl } from '../config/paths.js';
-import { logger } from '../util/logger.js';
+import { saveAccessToken } from '../auth/session.js';
+import { loadKey, SshKeyEncryptedError, SshKeyError } from '../auth/ssh.js';
+import { SshLoginClient } from '../auth/ssh-login.js';
+import { resolvedBackendUrl } from '../config/paths.js';
 import { ServerError } from '../util/errors.js';
+import { logger } from '../util/logger.js';
 
 export interface LoginOptions {
-  noOpen: boolean;
-  /// CI mode — don't even attempt the device-code flow. Callers that
-  /// set `I99DASH_API_KEY` bypass `login` entirely; this flag is just
-  /// an explicit "don't poll anything" toggle for scripts that
-  /// accidentally invoked `login`.
+  /// CI mode — don't attempt login. Callers that set `I99DASH_API_KEY`
+  /// bypass `login` entirely; this flag is an explicit "don't do
+  /// anything" toggle for scripts that accidentally invoked `login`.
   ci: boolean;
+  /// SSH private key path (default ~/.ssh/id_ed25519).
+  key?: string;
+  /// Passphrase for an encrypted key.
+  passphrase?: string;
+  /// Paste a credential directly, skipping the SSH flow.
+  token?: string;
 }
 
+/// Authenticate with an SSH key: sign a one-time challenge with the
+/// local private key and trade it for an access token. The first key is
+/// registered in the web console (Account -> SSH keys); the CLI can't
+/// add a key before it's authenticated (the GitHub model).
 export async function runLogin(opts: LoginOptions): Promise<void> {
   if (opts.ci) {
     logger.info('`--ci` passed; set I99DASH_API_KEY in env instead of running login.');
     return;
   }
 
-  const client = new BackendDeviceCodeClient(resolvedBackendUrl(), OAUTH_CLIENT_ID);
-
-  logger.info('requesting device code…');
-  const grant = await client.authorize();
-
-  const url = grant.verification_uri_complete ?? grant.verification_uri;
-  logger.box(
-    [`open this URL in a browser:`, `  ${url}`, `and enter the code:`, `  ${grant.user_code}`].join(
-      '\n',
-    ),
-  );
-
-  if (!opts.noOpen) {
-    await open(url).catch(() => {
-      logger.warn(`couldn't open browser automatically; visit ${url} manually.`);
-    });
-  }
-
-  logger.start('waiting for authorization…');
   let token: string;
-  try {
-    token = await client.pollToken(grant.device_code, grant.interval, grant.expires_in);
-  } catch (err) {
-    if (err instanceof ServerError && err.apiCode === 'access_denied') {
-      logger.error('authorization denied in the browser.');
+  if (opts.token) {
+    token = opts.token;
+  } else {
+    let loaded;
+    try {
+      loaded = loadKey(opts.key, opts.passphrase);
+    } catch (err) {
+      if (err instanceof SshKeyEncryptedError) {
+        logger.error('SSH key is passphrase-protected — re-run with `--passphrase <pass>`.');
+      } else if (err instanceof SshKeyError) {
+        logger.error(err.message);
+      }
       throw err;
     }
-    throw err;
+
+    const client = new SshLoginClient(resolvedBackendUrl());
+    logger.info(`signing in with key ${loaded.fingerprint}`);
+    const nonce = await client.challenge(loaded.fingerprint);
+    const signature = loaded.sign(Buffer.from(nonce, 'utf8')).toString('base64');
+
+    try {
+      token = await client.verify(nonce, signature);
+    } catch (err) {
+      if (err instanceof ServerError && err.apiCode === 'SSH_CHALLENGE_INVALID') {
+        logger.error(
+          "this key isn't registered yet. Add its PUBLIC key in the web console " +
+            '(Account -> SSH keys), then run `i99dash login` again.',
+        );
+      }
+      throw err;
+    }
   }
 
   await saveAccessToken(token);
   const store = await getKeychain();
   logger.success(
     store.isSecure
-      ? 'logged in — API key stored in OS keychain.'
-      : 'logged in — API key stored in config file (0600).',
+      ? 'logged in — token stored in OS keychain.'
+      : 'logged in — token stored in config file (0600).',
   );
 }
