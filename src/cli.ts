@@ -107,12 +107,21 @@ program
 
 program
   .command('login')
-  .description('authenticate and mint an API key (OAuth device-code)')
-  .option('--no-open', "don't try to open the browser automatically")
+  .description('authenticate with your SSH key (signs a challenge; no password)')
+  .option('--key <path>', 'SSH private key path (default ~/.ssh/id_ed25519)')
+  .option('--passphrase <pass>', 'passphrase for an encrypted key')
+  .option('--token <token>', 'paste a credential directly, skipping the SSH flow')
   .option('--ci', 'CI-only guard; prompts you to set I99DASH_API_KEY instead', false)
-  .action(async (opts: { open: boolean; ci: boolean }) => {
-    await runLogin({ noOpen: !opts.open, ci: opts.ci });
-  });
+  .action(
+    async (opts: { key?: string; passphrase?: string; token?: string; ci: boolean }) => {
+      await runLogin({
+        ci: opts.ci,
+        key: opts.key,
+        passphrase: opts.passphrase,
+        token: opts.token,
+      });
+    },
+  );
 
 program
   .command('logout')
