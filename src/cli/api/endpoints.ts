@@ -154,6 +154,11 @@ export async function submitApkManifest(
     devSignature: string;
     category?: string;
     requires?: Record<string, unknown>;
+    /// Storefront metadata (cosmetic; NOT part of the K1-signed manifest).
+    displayName?: Record<string, string>;
+    description?: Record<string, string>;
+    /// base64 of the launcher icon bytes (PNG/WEBP/JPEG).
+    icon?: string;
   },
 ): Promise<ApkSubmitResponse> {
   return api.post('/api/v1/apps/submit', req, (body) => ApkSubmitResponseSchema.parse(body));

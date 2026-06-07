@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 import { ApiClient } from '../api/client.js';
 import { requestApkUploadUrl, submitApkManifest } from '../api/endpoints.js';
@@ -7,6 +8,7 @@ import { requireAccessToken } from '../auth/session.js';
 import { loadApkManifest } from '../config/apk-load.js';
 import { resolvedBackendUrl } from '../config/paths.js';
 import { canonicalArtifactManifest } from '../util/apk-canonical.js';
+import { extractApkMetadata, toLocaleMap } from '../util/apk-extract.js';
 import { logger } from '../util/logger.js';
 import { runApkBuild } from './apk-build.js';
 import { runApkValidate } from './apk-validate.js';
@@ -69,6 +71,27 @@ export async function runApkPublish(opts: ApkPublishOptions): Promise<void> {
   const body = await readFile(apkPath);
   await api.putRaw(uploadUrl, body, APK_CONTENT_TYPE);
 
+  // 5b. Storefront metadata (cosmetic; sent alongside — NOT inside — the
+  //     K1-signed manifest). Auto-extract the launcher icon + label from the
+  //     APK; apk.json overrides win. Best-effort: extraction never blocks a
+  //     publish, and the icon is omitted if neither source yields one.
+  const extracted = await extractApkMetadata(apkPath);
+  if (extracted.package && extracted.package !== manifest.id) {
+    logger.warn(`APK applicationId '${extracted.package}' != apk.json id '${manifest.id}'`);
+  }
+  const displayName = toLocaleMap(manifest.displayName) ?? toLocaleMap(extracted.label);
+  const description = toLocaleMap(manifest.description);
+  let icon: string | undefined;
+  if (manifest.iconPath) {
+    icon = (await readFile(resolve(opts.cwd, manifest.iconPath))).toString('base64');
+  } else if (extracted.iconBase64) {
+    icon = extracted.iconBase64;
+  }
+  if (displayName || icon) {
+    const name = displayName ? Object.values(displayName)[0] : '(none)';
+    logger.info(`storefront: name='${name}' icon=${icon ? 'yes' : 'no'}`);
+  }
+
   // 6. Submit the attested manifest.
   logger.start('submitting…');
   const res = await submitApkManifest(api, {
@@ -83,6 +106,9 @@ export async function runApkPublish(opts: ApkPublishOptions): Promise<void> {
     devSignature,
     ...(manifest.category ? { category: manifest.category } : {}),
     ...(manifest.requires ? { requires: manifest.requires } : {}),
+    ...(displayName ? { displayName } : {}),
+    ...(description ? { description } : {}),
+    ...(icon ? { icon } : {}),
   });
   logger.success(`submitted — status=${res.reviewStatus} release=${res.releaseId.slice(0, 8)}…`);
   if (res.reviewStatus === 'pending') {

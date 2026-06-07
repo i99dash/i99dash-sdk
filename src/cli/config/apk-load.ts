@@ -39,6 +39,18 @@ export const ApkManifestSchema = z
     category: z.string().max(64).optional(),
     /// Compatibility requirements the car evaluates (androidSdk / abi / dilink).
     requires: z.record(z.string(), z.unknown()).optional(),
+    /// Storefront label override. The CLI auto-extracts the launcher label from
+    /// the APK; set this to override it (e.g. when the APK's default label is in
+    /// the wrong language). A bare string maps to the `en` fallback key; a
+    /// locale map ({"en": "...", "ar": "..."}) is sent verbatim.
+    displayName: z.union([z.string().max(128), z.record(z.string(), z.string())]).optional(),
+    /// Storefront description (locale map or bare string). APKs carry no store
+    /// description, so this is the only source — omitted if unset.
+    description: z.union([z.string().max(2000), z.record(z.string(), z.string())]).optional(),
+    /// Override icon: a relative path to a PNG/WEBP/JPEG used instead of the
+    /// icon auto-extracted from the APK (useful for adaptive-icon-only APKs the
+    /// parser can't rasterise).
+    iconPath: z.string().min(1).optional(),
   })
   .strict();
 
