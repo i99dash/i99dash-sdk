@@ -217,17 +217,36 @@ export async function listMyApps(api: ApiClient): Promise<MyApps> {
 // the rest here. Backend: ``app/api/v1/ssh_keys/routes.py`` (/account/ssh-keys).
 // ---------------------------------------------------------------------------
 
-const SshKeySchema = z.object({
-  id: z.string().min(1),
-  name: z.string(),
-  fingerprint: z.string().min(1),
-  keyType: z.string(),
-  /// "login" (full session) or "attest" (publish-scoped CI key only).
-  /// Optional for back-compat with a backend that predates the column.
-  purpose: z.string().optional(),
-  createdAt: z.string(),
-  lastUsedAt: z.string().nullable().optional(),
-});
+// The /account/ssh-keys route serialises **snake_case** (`key_type`,
+// `created_at`, `last_used_at`) — unlike the mini-app/theme/apps endpoints,
+// which emit camelCase. Parse the snake_case the route actually sends (and
+// tolerate camelCase too, so this can never silently throw again — a leaked
+// ZodError here previously crashed `keys add`/`keys list` AFTER the POST had
+// already succeeded), then normalise to the camelCase `SshKey` callers use.
+export const SshKeySchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string(),
+    fingerprint: z.string().min(1),
+    key_type: z.string().optional(),
+    keyType: z.string().optional(),
+    /// "login" (full session) or "attest" (publish-scoped CI key only).
+    /// Optional for back-compat with a backend that predates the column.
+    purpose: z.string().optional(),
+    created_at: z.string().optional(),
+    createdAt: z.string().optional(),
+    last_used_at: z.string().nullable().optional(),
+    lastUsedAt: z.string().nullable().optional(),
+  })
+  .transform((k) => ({
+    id: k.id,
+    name: k.name,
+    fingerprint: k.fingerprint,
+    keyType: k.key_type ?? k.keyType ?? 'ssh-ed25519',
+    purpose: k.purpose,
+    createdAt: k.created_at ?? k.createdAt ?? '',
+    lastUsedAt: k.last_used_at ?? k.lastUsedAt ?? null,
+  }));
 export type SshKey = z.infer<typeof SshKeySchema>;
 
 const SshKeyListSchema = z.object({ keys: z.array(SshKeySchema) });
